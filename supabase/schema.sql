@@ -215,7 +215,24 @@ create policy reaction_delete on public.reaction for delete
 
 -- ============================================================
 -- 6. 실시간 구독 대상
+--    이미 들어가 있으면 42710 에러가 나므로 확인 후 추가한다.
+--    (이 파일 전체는 몇 번을 다시 실행해도 안전하다)
 -- ============================================================
-alter publication supabase_realtime add table public.profile;
-alter publication supabase_realtime add table public.reaction;
-alter publication supabase_realtime add table public.party_member;
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['profile', 'reaction', 'party_member'] loop
+    if not exists (
+      select 1
+        from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = t
+    ) then
+      execute format(
+        'alter publication supabase_realtime add table public.%I', t
+      );
+    end if;
+  end loop;
+end $$;
