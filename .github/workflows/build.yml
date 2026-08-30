@@ -1,0 +1,77 @@
+# 맥·윈도우 설치 파일을 한 번에 뽑는다.
+#
+# 맥에서 윈도우 exe 를, 윈도우에서 맥 dmg 를 만들 수 없기 때문에
+# 각 OS 러너에서 따로 빌드한다.
+#
+# 실행 방법
+#   - Actions 탭 → "build" → Run workflow  (수동)
+#   - 또는 v0.1.0 같은 태그를 푸시하면 자동
+#
+# 필요한 Secret (Settings → Secrets and variables → Actions)
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+# 없으면 목 데이터로 도는 앱이 나온다. 친구한테 줄 빌드에는 반드시 넣을 것.
+
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macos
+            args: "--target universal-apple-darwin"
+            rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+          - os: windows-latest
+            label: windows
+            args: ""
+            rust-targets: ""
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.label }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      # 러스트 의존성 캐시. 첫 빌드는 5~10분, 이후는 1~2분.
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        with:
+          args: ${{ matrix.args }}
+
+      # 서명이 없어서 맥은 "확인되지 않은 개발자", 윈도우는 SmartScreen 경고가 뜬다.
+      # 여는 방법은 README 참고.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: run-study-${{ matrix.label }}
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*-setup.exe
+            src-tauri/target/release/bundle/**/*.msi

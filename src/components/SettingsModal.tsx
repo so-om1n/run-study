@@ -1,5 +1,6 @@
 import type { Party, Settings } from "../types";
 import { EXPIRY_OPTIONS } from "../lib/status";
+import { isMac } from "../lib/tauri";
 
 interface Props {
   settings: Settings;
@@ -40,20 +41,22 @@ export function SettingsModal({
             />
           </div>
 
-          <div className="list-item">
-            <div>
-              <div className="li-main">집중 중일 때 알림 끄기</div>
-              <div className="li-sub">
-                macOS 집중 모드 단축어 "{settings.shortcutName}" 실행
+          {isMac() && (
+            <div className="list-item">
+              <div>
+                <div className="li-main">집중 중일 때 알림 끄기</div>
+                <div className="li-sub">
+                  macOS 집중 모드 단축어 "{settings.shortcutName}" 실행
+                </div>
               </div>
+              <button
+                className={`toggle${settings.muteNotifications ? " on" : ""}`}
+                onClick={() =>
+                  onChange({ muteNotifications: !settings.muteNotifications })
+                }
+              />
             </div>
-            <button
-              className={`toggle${settings.muteNotifications ? " on" : ""}`}
-              onClick={() =>
-                onChange({ muteNotifications: !settings.muteNotifications })
-              }
-            />
-          </div>
+          )}
 
           <div className="list-item">
             <div>

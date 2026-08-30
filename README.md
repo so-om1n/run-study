@@ -9,6 +9,10 @@
 > 실시간 공유는 Supabase 를 연결해야 켜집니다([아래](#supabase-연결)).
 > Tauri(트레이·집중 모드) 쪽은 아직 실기기 검증 전입니다.
 
+**macOS · Windows 둘 다 빌드됩니다.** 차이는 알림 끄기(집중 모드)뿐 —
+macOS 만 지원하고, Windows 에서는 해당 설정이 아예 안 보입니다.
+설치 파일은 [GitHub Actions 로 양쪽을 한 번에](#친구에게-줄-설치-파일-만들기) 뽑습니다.
+
 ---
 
 ## 실행
@@ -31,16 +35,69 @@ cargo --version                                                     # 확인
 npm run tauri:dev                                                   # 첫 빌드는 5~10분
 ```
 
-배포용 빌드:
+내 컴퓨터용으로만 빌드:
 
 ```bash
-npm run tauri:build   # src-tauri/target/release/bundle/ 에 .app / .dmg
+npm run tauri:build   # macOS → .app/.dmg,  Windows → -setup.exe/.msi
 ```
 
-서명 없이 만든 앱은 다른 맥에서 "확인되지 않은 개발자" 경고가 뜹니다.
-친구한테 줄 때는 **시스템 설정 → 개인정보 보호 및 보안 → 확인 없이 열기**를
-누르라고 하거나, 터미널에서 `xattr -dr com.apple.quarantine "/Applications/run study.app"`.
-공증까지 하려면 Apple Developer Program(연 $99)이 필요합니다.
+---
+
+## 친구에게 줄 설치 파일 만들기
+
+**맥에서 윈도우 exe 를, 윈도우에서 맥 dmg 를 만들 수 없습니다.**
+그래서 `.github/workflows/build.yml` 이 두 OS 러너에서 각각 빌드합니다.
+
+### 1. Secret 등록 (한 번만)
+
+레포 **Settings → Secrets and variables → Actions → New repository secret**
+
+| 이름 | 값 |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://xxxxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Publishable key |
+
+**안 넣으면 목 데이터로 도는 앱이 나옵니다.** 친구한테 줄 빌드에는 반드시.
+(Publishable key 는 빌드 결과물에 그대로 박혀 나갑니다. 원래 공개 전제인
+키라 괜찮고, 막는 건 RLS 입니다. Secret key 는 절대 넣지 마세요)
+
+### 2. 돌리기
+
+**Actions 탭 → build → Run workflow.** `v0.1.0` 같은 태그를 푸시해도 돕니다.
+끝나면 실행 화면 하단 Artifacts 에서 받습니다:
+
+- `run-study-macos` — `.dmg` (인텔·애플실리콘 겸용 유니버설)
+- `run-study-windows` — `-setup.exe` (설치 프로그램)
+
+> 비공개 레포는 러너 분당 요금이 다르게 붙습니다. 윈도우 2배, **맥 10배.**
+> 무료 한도(월 2000분) 기준 맥 빌드 10분이면 100분 차감이라 한 달에
+> 스무 번쯤 돌릴 수 있습니다.
+
+### 3. 친구가 열 때
+
+**둘 다 서명이 없어서 경고가 뜹니다.** 악성이라는 뜻이 아니라 유료 개발자
+등록을 안 했다는 뜻입니다.
+
+| | 여는 법 |
+|---|---|
+| Windows | "Windows의 PC 보호" 창 → **추가 정보** → **실행** |
+| macOS | 시스템 설정 → 개인정보 보호 및 보안 → **확인 없이 열기**<br>또는 `xattr -dr com.apple.quarantine "/Applications/run study.app"` |
+
+경고까지 없애려면 코드 서명이 필요합니다 — Apple Developer $99/년,
+Windows 코드 서명 인증서 연 $200~400.
+
+### Windows 에서 다른 점
+
+- **알림 끄기(집중 모드)가 없습니다.** Windows 집중 지원은 서드파티가 켤 수
+  있는 공개 API가 없어서, 설정에서 항목 자체를 감췄습니다. 상태 표시로서의
+  "집중 중"과 타이머는 그대로 동작합니다.
+- 트레이 아이콘이 다릅니다. macOS 는 템플릿(알파만) 아이콘이라 흑백으로
+  나오고, Windows 는 색이 들어간 `icons/tray-color.png` 를 씁니다.
+- 팝오버가 트레이 아이콘 **위**로 붙습니다(작업 표시줄이 아래라서).
+  판단은 OS 가 아니라 아이콘이 화면 위쪽 절반에 있는지로 하기 때문에,
+  작업 표시줄을 위나 옆으로 옮겨둬도 알아서 맞춰집니다.
+- WebView2 런타임이 필요한데 설치 프로그램이 자동으로 받아옵니다
+  (Windows 10 최신 이상은 대개 이미 있음).
 
 ---
 
@@ -85,6 +142,9 @@ npm run tauri:build   # src-tauri/target/release/bundle/ 에 .app / .dmg
 ---
 
 ## 알림 끄기 (macOS 집중 모드)
+
+> Windows 에는 없는 기능입니다. Windows 집중 지원도 서드파티가 켤 수 있는
+> 공개 API가 없어서, 설정에서 이 항목을 아예 숨깁니다.
 
 macOS는 서드파티 앱이 집중 모드를 켜는 **공개 API를 제공하지 않습니다.**
 다른 앱의 알림을 가로채거나 억제하는 것도 불가능합니다(Apple DTS 공식 답변).
@@ -209,7 +269,9 @@ src-tauri/
 - **실제 Supabase 프로젝트에서 검증 안 됨** — 코드와 스키마는 있지만
   실행해본 적 없음. 첫 연결 때 손볼 곳이 나올 수 있음
 - 데스크톱 OAuth 딥링크 (계정 연결은 브라우저에서만)
-- Tauri 쪽 컴파일 검증 (트레이·집중 모드·자동 숨김)
+- **Tauri 쪽 컴파일 검증** — 러스트 코드는 문법만 확인했고 아직 한 번도
+  빌드된 적이 없음. Actions 를 한 번 돌리는 게 곧 첫 검증
+- Windows 실기기 확인 (트레이 위치·투명 창·자동 실행)
 - 프로필 사진을 dataURL 로 DB 에 넣고 있음 — 커지면 Storage 로 옮길 것
 - 노션식 커스텀 스티커(이미지 업로드)
 - 리더보드, RunDev 연동 (Phase 2 이후)

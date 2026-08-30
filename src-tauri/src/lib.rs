@@ -63,16 +63,72 @@ fn set_auto_launch(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     }
 }
 
-/// 트레이 아이콘 바로 아래에 창을 붙인다.
-fn position_under_tray(window: &tauri::WebviewWindow, tray_rect_x: f64, tray_rect_y: f64) {
-    if let Ok(size) = window.outer_size() {
-        let x = (tray_rect_x - (size.width as f64) / 2.0).max(8.0);
-        let y = tray_rect_y + 6.0;
-        let _ = window.set_position(PhysicalPosition::new(x, y));
+/// 범위가 뒤집혀도 패닉하지 않는 clamp.
+/// (창이 모니터보다 큰 경우 lo > hi 가 되어 `f64::clamp` 는 패닉한다)
+fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
+    if hi < lo {
+        lo
+    } else {
+        v.max(lo).min(hi)
     }
 }
 
-fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64)>) {
+/// 트레이 아이콘 옆에 창을 붙인다.
+///
+/// 맥은 메뉴 막대가 화면 위에 있어서 아이콘 **아래**로 내려야 하고,
+/// 윈도우는 작업 표시줄이 아래에 있어서 아이콘 **위**로 올려야 한다.
+/// OS 를 직접 보고 나누는 대신 트레이 아이콘이 모니터의 위쪽 절반에
+/// 있는지로 판단한다 — 윈도우에서 작업 표시줄을 위/좌/우로 옮겨둔
+/// 경우까지 같은 규칙으로 커버된다.
+fn position_near_tray(
+    window: &tauri::WebviewWindow,
+    center_x: f64,
+    rect_top: f64,
+    rect_bottom: f64,
+) {
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+    let (w, h) = (size.width as f64, size.height as f64);
+
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten());
+
+    let (mon_x, mon_y, mon_w, mon_h) = match monitor {
+        Some(m) => {
+            let p = m.position();
+            let s = m.size();
+            (p.x as f64, p.y as f64, s.width as f64, s.height as f64)
+        }
+        // 모니터 정보를 못 얻으면 클램프를 사실상 끈다
+        None => (
+            f64::MIN / 4.0,
+            f64::MIN / 4.0,
+            f64::MAX / 2.0,
+            f64::MAX / 2.0,
+        ),
+    };
+
+    const GAP: f64 = 6.0;
+    const EDGE: f64 = 8.0;
+
+    let below = rect_top - mon_y < mon_h / 2.0;
+    let y = if below {
+        rect_bottom + GAP
+    } else {
+        rect_top - h - GAP
+    };
+
+    let x = clamp(center_x - w / 2.0, mon_x + EDGE, mon_x + mon_w - w - EDGE);
+    let y = clamp(y, mon_y + EDGE, mon_y + mon_h - h - EDGE);
+
+    let _ = window.set_position(PhysicalPosition::new(x, y));
+}
+
+fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64, f64)>) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
@@ -80,8 +136,8 @@ fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64)>) {
     if visible {
         let _ = window.hide();
     } else {
-        if let Some((x, y)) = at {
-            position_under_tray(&window, x, y);
+        if let Some((cx, top, bottom)) = at {
+            position_near_tray(&window, cx, top, bottom);
         }
         let _ = window.show();
         let _ = window.set_focus();
@@ -108,13 +164,8 @@ pub fn run() {
             // ---- 트레이 우클릭 메뉴 ----
             let online = MenuItem::with_id(app, "online", "온라인", true, None::<&str>)?;
             let focus = MenuItem::with_id(app, "focus", "집중 중", true, None::<&str>)?;
-            let offline = MenuItem::with_id(
-                app,
-                "offline",
-                "오프라인으로 표시",
-                true,
-                None::<&str>,
-            )?;
+            let offline =
+                MenuItem::with_id(app, "offline", "오프라인으로 표시", true, None::<&str>)?;
             let status_msg = MenuItem::with_id(
                 app,
                 "status_message",
@@ -122,8 +173,7 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
-            let settings =
-                MenuItem::with_id(app, "settings", "설정…", true, None::<&str>)?;
+            let settings = MenuItem::with_id(app, "settings", "설정…", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
             let sep1 = PredefinedMenuItem::separator(app)?;
             let sep2 = PredefinedMenuItem::separator(app)?;
@@ -142,47 +192,64 @@ pub fn run() {
                 ],
             )?;
 
-            // 메뉴 막대 아이콘은 앱 아이콘과 따로 간다.
-            // 템플릿 모드에서는 색이 무시되고 알파만 쓰이기 때문에,
-            // 눈이 "구멍"으로 뚫린 전용 이미지를 써야 눈이 보인다.
-            let tray_icon = tauri::image::Image::from_bytes(include_bytes!(
-                "../icons/tray@2x.png"
-            ))?;
+            // 트레이 아이콘은 앱 아이콘과 따로 간다.
+            //
+            // 맥: 템플릿 모드라 색이 전부 무시되고 알파만 쓰인다. 그래서
+            //     눈이 "구멍"으로 뚫린 전용 이미지를 써야 눈이 보인다.
+            // 윈도우: 템플릿 개념이 없다. 같은 이미지를 쓰면 작업 표시줄에서
+            //     검은 실루엣으로 뭉개지므로 색이 들어간 버전을 쓴다.
+            #[cfg(target_os = "macos")]
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray@2x.png"))?;
+            #[cfg(not(target_os = "macos"))]
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray-color.png"))?;
 
-            TrayIconBuilder::with_id("main")
+            let tray = TrayIconBuilder::with_id("main")
                 .icon(tray_icon)
-                .icon_as_template(true)
                 .tooltip("run study")
                 .menu(&menu)
                 // 좌클릭은 메뉴가 아니라 팝오버를 연다
-                .show_menu_on_left_click(false)
-                .on_menu_event(move |app, event| match event.id.as_ref() {
-                    "quit" => app.exit(0),
-                    id => {
-                        // 프론트에서 처리 (상태 변경, 모달 열기)
-                        let _ = app.emit("tray-menu", id);
-                        if id == "status_message" || id == "settings" {
-                            toggle_popover(app, None);
-                        }
+                .show_menu_on_left_click(false);
+
+            // 맥 전용 옵션이라 다른 OS 에서는 아예 호출하지 않는다
+            #[cfg(target_os = "macos")]
+            let tray = tray.icon_as_template(true);
+
+            tray.on_menu_event(move |app, event| match event.id.as_ref() {
+                "quit" => app.exit(0),
+                id => {
+                    // 프론트에서 처리 (상태 변경, 모달 열기)
+                    let _ = app.emit("tray-menu", id);
+                    if id == "status_message" || id == "settings" {
+                        toggle_popover(app, None);
                     }
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        rect,
-                        ..
-                    } = event
-                    {
-                        let pos = rect.position.to_physical::<f64>(1.0);
-                        let size = rect.size.to_physical::<f64>(1.0);
-                        toggle_popover(
-                            tray.app_handle(),
-                            Some((pos.x + size.width / 2.0, pos.y + size.height)),
-                        );
-                    }
-                })
-                .build(app)?;
+                }
+            })
+            .on_tray_icon_event(|tray, event| {
+                if let TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    rect,
+                    ..
+                } = event
+                {
+                    let app = tray.app_handle();
+                    // 논리 좌표로 올 수도 있어서 실제 배율로 환산한다.
+                    // (윈도우는 125%·150% 배율이 기본인 기기가 많다)
+                    let scale = app
+                        .get_webview_window("main")
+                        .and_then(|w| w.scale_factor().ok())
+                        .unwrap_or(1.0);
+                    let pos = rect.position.to_physical::<f64>(scale);
+                    let size = rect.size.to_physical::<f64>(scale);
+                    toggle_popover(
+                        app,
+                        Some((pos.x + size.width / 2.0, pos.y, pos.y + size.height)),
+                    );
+                }
+            })
+            .build(app)?;
 
             // 독(Dock) 아이콘 숨기기 — 메뉴 막대 앱으로 동작
             #[cfg(target_os = "macos")]

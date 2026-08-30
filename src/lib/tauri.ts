@@ -14,6 +14,19 @@ function getInvoke(): InvokeFn | null {
 export const isTauri = () => getInvoke() !== null;
 
 /**
+ * 맥이냐.
+ *
+ * 집중 모드(알림 끄기)는 맥에서만 경로가 있다. 윈도우의 집중 지원(Focus
+ * Assist)은 서드파티가 켤 수 있는 공개 API가 없어서 흉내 낼 방법이 없다.
+ * 그래서 윈도우에서는 해당 설정을 아예 감춘다 — 켜지지도 않는 토글을
+ * 남겨두면 "고장났다"로 읽힌다.
+ */
+export function isMac(): boolean {
+  if (typeof navigator === "undefined") return true;
+  return /Mac|iPhone|iPad/.test(navigator.userAgent);
+}
+
+/**
  * macOS 집중 모드 토글.
  *
  * macOS 는 서드파티 앱이 집중 모드를 켜는 공개 API를 주지 않는다.
