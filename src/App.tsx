@@ -70,6 +70,9 @@ type Modal =
 
 export default function App() {
   const [client, setClient] = useState<PresenceClient | null>(null);
+  const [fatal, setFatal] = useState<{ error: string; hint?: string } | null>(
+    null,
+  );
   const [party, setParty] = useState<Party | null>(null);
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
 
@@ -105,15 +108,27 @@ export default function App() {
     let stop: (() => void) | undefined;
     let alive = true;
 
-    void createPresence().then(async (c) => {
+    void createPresence().then(async (result) => {
       if (!alive) return;
-      setClient(c);
-      const off = await c.start((snap) => {
-        setParty(snap.party);
-        setReactions(snap.reactions);
-      });
-      if (alive) stop = off;
-      else off();
+      if (!result.ok) {
+        setFatal({ error: result.error, hint: result.hint });
+        return;
+      }
+      setClient(result.client);
+      try {
+        const off = await result.client.start((snap) => {
+          setParty(snap.party);
+          setReactions(snap.reactions);
+        });
+        if (alive) stop = off;
+        else off();
+      } catch (e) {
+        if (alive)
+          setFatal({
+            error: e instanceof Error ? e.message : "파티를 불러오지 못했어요",
+            hint: "supabase/schema.sql 을 실행했는지, RLS 정책이 올라갔는지 확인해 주세요",
+          });
+      }
     });
 
     return () => {
@@ -192,6 +207,25 @@ export default function App() {
     (patch: MePatch) => void client?.updateMe(patch),
     [client],
   );
+
+  if (fatal) {
+    return (
+      <div className="popover">
+        <div className="fatal">
+          <div className="fatal-ic">⚠️</div>
+          <h4>연결하지 못했어요</h4>
+          <p className="fatal-msg">{fatal.error}</p>
+          {fatal.hint && <p className="fatal-hint">{fatal.hint}</p>}
+          <button
+            className="btn-full sec"
+            onClick={() => window.location.reload()}
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!client) return <div className="popover" />;
   const c = client;
@@ -348,7 +382,10 @@ export default function App() {
             </button>
           </div>
         )}
-        <div className="foot-meta">{onlineCount}명 접속 중</div>
+        <div className="foot-meta">
+          {!c.isLive() && <span className="mock-tag">목 데이터</span>}
+          {onlineCount}명 접속 중
+        </div>
       </div>
 
       {palette && (

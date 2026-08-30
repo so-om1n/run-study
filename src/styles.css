@@ -1317,3 +1317,43 @@ button {
   font-weight: 700;
   flex: none;
 }
+
+/* ---- 연결 실패 화면 ---- */
+.fatal {
+  padding: 34px 24px;
+  text-align: center;
+}
+.fatal-ic {
+  font-size: 30px;
+  margin-bottom: 12px;
+}
+.fatal h4 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.fatal-msg {
+  font-size: 12.5px;
+  color: var(--red);
+  font-weight: 600;
+  line-height: 1.6;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+.fatal-hint {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+/* 백엔드에 안 붙어 있다는 표시 */
+.mock-tag {
+  background: #f3effb;
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  margin-right: 6px;
+}

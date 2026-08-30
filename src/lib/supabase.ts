@@ -32,10 +32,8 @@ export async function ensureSession(): Promise<Session | null> {
 
   if (!user) {
     const { data: anon, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.error("[run study] 익명 로그인 실패", error);
-      return null;
-    }
+    // 여기서 삼키지 않고 올린다. 조용히 목으로 떨어지면 원인을 못 찾는다.
+    if (error) throw new Error(`익명 로그인 실패: ${error.message}`);
     user = anon.user;
   }
   if (!user) return null;

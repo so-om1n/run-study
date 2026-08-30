@@ -97,20 +97,43 @@ export function toMember(
 
 export type { Party, Member, Reaction };
 
-/** 키가 있으면 Supabase, 없으면 목. */
-export async function createPresence(): Promise<PresenceClient> {
+export type PresenceResult =
+  | { ok: true; client: PresenceClient }
+  | { ok: false; error: string; hint?: string };
+
+/**
+ * 키가 없으면 목, 있으면 Supabase.
+ *
+ * 중요 — 키가 있는데 연결에 실패하면 목으로 떨어지지 않는다.
+ * 조용히 폴백하면 화면에는 목 데이터 6명이 멀쩡히 떠서
+ * "되네?" 하고 넘어가고, 정작 친구는 안 보이는데 이유를 모르게 된다.
+ * 그래서 그때는 에러를 그대로 올린다.
+ */
+export async function createPresence(): Promise<PresenceResult> {
   const { supabase, ensureSession } = await import("./supabase");
-  const { MockPresence } = await import("./mockPresence");
 
   if (!supabase) {
-    console.info("[run study] Supabase 키가 없어 목 데이터로 실행합니다.");
-    return new MockPresence();
+    // 키가 아예 없는 건 의도된 상태다 (백엔드 없이 UI 보기)
+    const { MockPresence } = await import("./mockPresence");
+    return { ok: true, client: new MockPresence() };
   }
-  const session = await ensureSession();
-  if (!session) {
-    console.warn("[run study] 세션 확보 실패 — 목 데이터로 실행합니다.");
-    return new MockPresence();
+
+  try {
+    const session = await ensureSession();
+    if (!session) {
+      return {
+        ok: false,
+        error: "익명 로그인이 거절됐어요",
+        hint: "Supabase 대시보드 → Authentication → Providers → Anonymous sign-ins 가 켜져 있는지 확인해 주세요",
+      };
+    }
+    const { SupabasePresence } = await import("./supabasePresence");
+    return { ok: true, client: new SupabasePresence(session) };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Supabase 에 붙지 못했어요",
+      hint: ".env 의 URL 과 anon key 를 다시 확인해 주세요",
+    };
   }
-  const { SupabasePresence } = await import("./supabasePresence");
-  return new SupabasePresence(session);
 }
