@@ -124,6 +124,7 @@ Windows 코드 서명 인증서 연 $200~400.
 | 트레이 메뉴 | 수동 상태 지정, 상태 메시지, 설정, 종료 |
 | 설정 | 자동 실행, 알림 끄기, 만료 기본값, 해제 규칙 |
 | 온보딩 | 소개 → 파티 만들기/코드로 참여 |
+| 초대 | 파티를 만들면 코드 창이 바로 뜸. 헤더 ＋ 나 설정 → 파티 → 초대 로 다시 열림. 코드를 누르면 복사 |
 
 ## 상태 우선순위 (`src/lib/status.ts`)
 
@@ -258,6 +259,7 @@ src/
     ConfirmDialog.tsx   반응 떼기 (쓰레기통)
     SettingsModal.tsx   설정
     Onboarding.tsx      파티 만들기 / 참여
+    InviteModal.tsx     초대 코드 보여주고 복사
 supabase/
   schema.sql            테이블 + RLS + 파티 함수
 src-tauri/

@@ -1357,3 +1357,53 @@ button {
   font-weight: 800;
   margin-right: 6px;
 }
+
+/* ---- 친구 초대 ---- */
+.invite-lead {
+  font-size: 12.5px;
+  color: var(--ink-mid);
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.invite-lead b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.invite-code {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 14px;
+  border-radius: 16px;
+  background: var(--soft);
+  border: 1.5px dashed #d6cdf0;
+  transition: background 0.12s, border-color 0.12s;
+}
+.invite-code:hover {
+  background: #f1ecfc;
+  border-color: var(--accent);
+}
+.invite-code-text {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  /* 코드는 눈으로 읽고 손으로 칠 수도 있어야 해서 선택을 막지 않는다 */
+  user-select: text;
+  /* 왼쪽 자간 때문에 시각적으로 왼쪽으로 쏠리는 걸 보정 */
+  text-indent: 0.16em;
+  color: var(--ink);
+}
+.invite-code-hint {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.invite-note {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}

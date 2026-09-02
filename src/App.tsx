@@ -25,6 +25,7 @@ import { ProfileModal } from "./components/ProfileModal";
 import { DetailCard } from "./components/DetailCard";
 import { SettingsModal } from "./components/SettingsModal";
 import { Onboarding } from "./components/Onboarding";
+import { InviteModal } from "./components/InviteModal";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { ReactionPalette } from "./components/ReactionPalette";
 
@@ -66,6 +67,7 @@ type Modal =
   | { kind: "status" }
   | { kind: "profile" }
   | { kind: "settings" }
+  | { kind: "invite" }
   | { kind: "detail"; memberId: string };
 
 export default function App() {
@@ -234,7 +236,12 @@ export default function App() {
   if (!party) {
     return (
       <Onboarding
-        onCreate={(name) => c.createParty(name)}
+        onCreate={async (name) => {
+          await c.createParty(name);
+          // 만들자마자 코드를 보여준다. 여기서 안 보여주면 파티는
+          // 만들었는데 친구를 부를 방법이 없는 상태가 된다.
+          setModal({ kind: "invite" });
+        }}
         onJoin={(code) => c.joinParty(code)}
       />
     );
@@ -327,6 +334,13 @@ export default function App() {
             {me?.message?.text ?? "상태 메시지 남기기"}
           </div>
         </div>
+        <button
+          className="icon-btn"
+          onClick={() => setModal({ kind: "invite" })}
+          title="친구 초대"
+        >
+          ＋
+        </button>
         <button
           className="icon-btn"
           onClick={() => setModal({ kind: "settings" })}
@@ -440,12 +454,17 @@ export default function App() {
         />
       )}
 
+      {modal.kind === "invite" && (
+        <InviteModal party={party} onClose={() => setModal({ kind: "none" })} />
+      )}
+
       {modal.kind === "settings" && (
         <SettingsModal
           settings={settings}
           party={party}
           canLinkAccount={canLink}
           onLinkAccount={() => void c.linkAccount()}
+          onInvite={() => setModal({ kind: "invite" })}
           onChange={(patch) => {
             setSettings((s) => {
               if (patch.autoLaunch !== undefined)

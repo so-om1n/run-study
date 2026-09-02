@@ -8,6 +8,7 @@ interface Props {
   /** 익명 계정일 때만 노출 */
   canLinkAccount: boolean;
   onLinkAccount: () => void;
+  onInvite: () => void;
   onChange: (patch: Partial<Settings>) => void;
   onClose: () => void;
 }
@@ -17,6 +18,7 @@ export function SettingsModal({
   party,
   canLinkAccount,
   onLinkAccount,
+  onInvite,
   onChange,
   onClose,
 }: Props) {
@@ -106,6 +108,9 @@ export function SettingsModal({
                 {party.name} · {party.members.length}명 · 코드 {party.code}
               </div>
             </div>
+            <button className="link-btn" onClick={onInvite}>
+              초대
+            </button>
           </div>
 
           {canLinkAccount && (
