@@ -104,6 +104,24 @@ export async function setAutoHide(enabled: boolean) {
   }
 }
 
+/**
+ * 팝오버를 닫아달라고 요청한다.
+ *
+ * 네이티브 포커스 이벤트만 믿으면, 앱이 활성화되지 않아 창이 키 윈도우가
+ * 못 된 경우 blur 이벤트 자체가 안 와서 팝오버가 계속 떠 있게 된다.
+ * 웹뷰가 감지한 blur 로도 닫을 수 있게 낸 두 번째 길.
+ * 모달이 떠 있는 동안에는 러스트 쪽에서 무시한다.
+ */
+export async function hidePopover() {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  try {
+    await invoke("hide_popover");
+  } catch {
+    /* 예전 버전 바이너리면 커맨드가 없다 */
+  }
+}
+
 export async function setAutoLaunch(enabled: boolean) {
   const invoke = getInvoke();
   if (!invoke) return;

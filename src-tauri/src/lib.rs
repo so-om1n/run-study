@@ -140,7 +140,31 @@ fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64, f64)>) {
             position_near_tray(&window, cx, top, bottom);
         }
         let _ = window.show();
+
+        // 독 아이콘이 없는 액세서리 앱은 창을 띄워도 앱이 활성화되지
+        // 않을 수 있다. 그러면 창이 키 윈도우가 못 되고, 포커스를 받은
+        // 적이 없으니 잃을 일도 없어서 `Focused(false)` 가 영영 안 온다.
+        // 결과: 다른 앱을 눌러도 팝오버가 계속 떠 있는다.
+        // 그래서 포커스를 주기 전에 앱을 먼저 앞으로 꺼낸다.
+        #[cfg(target_os = "macos")]
+        let _ = app.show();
+
         let _ = window.set_focus();
+    }
+}
+
+/// 프론트에서 "창이 blur 됐다"고 알려올 때 쓰는 안전망.
+///
+/// 위 활성화로도 네이티브 포커스 이벤트가 안 오는 경우가 있어서,
+/// 웹뷰가 감지한 blur 로도 닫을 수 있게 길을 하나 더 낸다.
+/// 모달이 떠 있는 동안에는 `AutoHide` 가 false 라 무시된다.
+#[tauri::command]
+fn hide_popover(app: tauri::AppHandle, state: tauri::State<'_, AutoHide>) {
+    if !state.0.load(Ordering::Relaxed) {
+        return;
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
     }
 }
 
@@ -156,7 +180,8 @@ pub fn run() {
             set_focus_mode,
             update_tray_count,
             set_auto_launch,
-            set_auto_hide
+            set_auto_hide,
+            hide_popover
         ])
         .setup(|app| {
             let handle = app.handle().clone();

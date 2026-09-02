@@ -14,6 +14,7 @@ import { formatDuration, resolveStatus } from "./lib/status";
 import {
   onTrayMenu,
   setAutoHide,
+  hidePopover,
   setAutoLaunch,
   setFocusMode,
   updateTrayCount,
@@ -196,11 +197,24 @@ export default function App() {
   }, [party]);
 
   /* ---------- 모달이 떠 있으면 팝오버가 스스로 닫히지 않게 ---------- */
+  const canAutoHide =
+    modal.kind === "none" && pendingRemove === null && palette === null;
+
   useEffect(() => {
-    void setAutoHide(
-      modal.kind === "none" && pendingRemove === null && palette === null,
-    );
-  }, [modal.kind, pendingRemove, palette]);
+    void setAutoHide(canAutoHide);
+  }, [canAutoHide]);
+
+  /* ---------- 창이 포커스를 잃으면 닫는다 (웹뷰 쪽 안전망) ----------
+   * 네이티브 이벤트만 믿으면, 앱이 활성화되지 않아 창이 키 윈도우가 되지
+   * 못한 경우 blur 이 영영 안 와서 팝오버가 계속 떠 있는다. 웹뷰가 보는
+   * blur 로도 닫을 수 있게 길을 하나 더 낸다. 러스트 쪽에서도 같은
+   * 조건으로 한 번 더 거른다. */
+  useEffect(() => {
+    if (!canAutoHide) return;
+    const onBlur = () => void hidePopover();
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [canAutoHide]);
 
   useEffect(() => save(LS.manual, manual), [manual]);
   useEffect(() => save(LS.settings, settings), [settings]);
