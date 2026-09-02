@@ -1,7 +1,7 @@
 {
   "name": "run-study",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "test": "node --experimental-strip-types --test src/lib/game/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

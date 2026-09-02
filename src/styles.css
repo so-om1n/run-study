@@ -364,6 +364,9 @@ button {
   font-size: 11px;
   color: var(--ink-soft);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 /* ================= 오버레이 / 모달 ================= */
@@ -1406,4 +1409,390 @@ button {
   text-align: center;
   font-size: 11.5px;
   color: var(--ink-soft);
+}
+
+/* ---- 로비 ---- */
+.lobby {
+  display: flex;
+  flex-direction: column;
+}
+.lobby-head {
+  justify-content: space-between;
+  gap: 8px;
+}
+.lobby-title {
+  font-size: 15px;
+  font-weight: 800;
+  flex: 1;
+  text-align: center;
+}
+.lobby-head .lobby-title:first-child {
+  text-align: left;
+}
+.lobby-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 16px;
+}
+.lobby-empty {
+  text-align: center;
+  color: var(--ink-mid);
+  font-size: 12.5px;
+  line-height: 1.7;
+  padding: 28px 8px 22px;
+}
+.room {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 14px;
+  background: var(--soft);
+  margin-bottom: 8px;
+  border: 1.5px solid transparent;
+}
+.room.cur {
+  border-color: var(--accent);
+  background: #f1ecfc;
+}
+.room-main {
+  flex: 1;
+  text-align: left;
+  padding: 8px 0;
+  min-width: 0;
+}
+.room-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-cur {
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex: none;
+}
+.room-sub {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.lobby-actions {
+  margin-top: 14px;
+}
+.lobby-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.lobby-warn {
+  font-size: 12px;
+  color: var(--ink-mid);
+  background: #fdf2f1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.btn-full.danger {
+  background: var(--red);
+}
+.btn-full.danger-text {
+  color: var(--red);
+  margin-top: 14px;
+}
+
+/* ---- 미니게임 ---- */
+.game-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--page);
+}
+.game-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 14px 8px;
+  align-items: center;
+}
+.game-tab {
+  padding: 7px 14px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-mid);
+  background: transparent;
+}
+.game-tab.on {
+  background: var(--accent);
+  color: #fff;
+}
+.game-room {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+.game {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.game-board {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.g-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.g-cell {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.g-cell.filled {
+  border-color: var(--ink-soft);
+}
+.g-cell.hit {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.g-cell.near {
+  background: #f0c96b;
+  border-color: #f0c96b;
+  color: #fff;
+}
+.g-cell.miss,
+.g-cell.done {
+  background: #ded8ec;
+  border-color: #ded8ec;
+  color: #fff;
+}
+.g-score {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.g-score .s {
+  color: var(--green);
+}
+.g-score .b {
+  color: #d9a441;
+}
+.g-score .out {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.game-toast {
+  margin-top: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 10px;
+}
+.game-result {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-mid);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+.game-result.win {
+  color: #2f7d55;
+  background: #e4f4eb;
+}
+.game-keys {
+  margin-top: 14px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.k-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  width: 100%;
+}
+.key {
+  flex: 1;
+  max-width: 34px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.key.wide {
+  max-width: 52px;
+  font-size: 11.5px;
+  background: #e2dcf1;
+}
+.key.hit {
+  background: var(--green);
+  color: #fff;
+}
+.key.near {
+  background: #f0c96b;
+  color: #fff;
+}
+.key.miss {
+  background: #cfc8e0;
+  color: #fff;
+}
+.game-friends {
+  margin-top: 18px;
+  width: 100%;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.gf-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.gf-empty {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.gf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+.gf-face {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.gf-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gf-dots {
+  display: flex;
+  gap: 3px;
+  margin-left: auto;
+}
+.gf-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ded8ec;
+}
+.gf-dot.win {
+  background: var(--green);
+}
+.gf-state {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-mid);
+  min-width: 34px;
+  text-align: right;
+}
+.game-foot {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* 푸터의 방 이름 = 로비 입구 */
+.room-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 130px;
+  padding: 3px 9px;
+  border-radius: 9px;
+  background: #efeaf9;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-mid);
+}
+.room-pill:hover {
+  background: #e4dcf6;
+  color: var(--ink);
+}
+.room-pill > :first-child,
+.room-pill {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-pill-n {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 5px;
+  padding: 0 4px;
+  font-size: 9.5px;
+  flex: none;
+}
+.foot-count {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.link-btn.sec {
+  background: #ece6f8;
+  color: var(--ink-mid);
+  margin-right: 6px;
+}
+
+/* 클릭했을 때 남는 기본 포커스 테두리가 디자인을 깬다.
+   키보드 이동은 살려야 하므로 :focus-visible 만 우리 스타일로 그린다. */
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 숫자야구는 10줄이라 워들과 같은 크기면 친구 진행도까지 안 보인다 */
+.game.bb .g-cell {
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+}
+.game.bb .game-board {
+  gap: 4px;
 }

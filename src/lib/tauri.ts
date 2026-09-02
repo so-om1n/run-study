@@ -122,6 +122,21 @@ export async function hidePopover() {
   }
 }
 
+/** 미니게임 창 열기 (없으면 만들고, 있으면 앞으로) */
+export async function openGameWindow() {
+  const invoke = getInvoke();
+  if (!invoke) {
+    // 브라우저에서는 새 탭으로 확인할 수 있게
+    window.open(`${location.pathname}#game`, "_blank");
+    return;
+  }
+  try {
+    await invoke("open_game_window");
+  } catch (e) {
+    console.warn("[run study] 게임 창을 못 열었어요", e);
+  }
+}
+
 export async function setAutoLaunch(enabled: boolean) {
   const invoke = getInvoke();
   if (!invoke) return;

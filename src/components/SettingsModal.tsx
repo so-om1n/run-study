@@ -9,6 +9,7 @@ interface Props {
   canLinkAccount: boolean;
   onLinkAccount: () => void;
   onInvite: () => void;
+  onOpenLobby: () => void;
   onChange: (patch: Partial<Settings>) => void;
   onClose: () => void;
 }
@@ -19,6 +20,7 @@ export function SettingsModal({
   canLinkAccount,
   onLinkAccount,
   onInvite,
+  onOpenLobby,
   onChange,
   onClose,
 }: Props) {
@@ -108,6 +110,9 @@ export function SettingsModal({
                 {party.name} · {party.members.length}명 · 코드 {party.code}
               </div>
             </div>
+            <button className="link-btn sec" onClick={onOpenLobby}>
+              방 목록
+            </button>
             <button className="link-btn" onClick={onInvite}>
               초대
             </button>

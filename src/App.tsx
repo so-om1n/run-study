@@ -8,13 +8,14 @@ import type {
   StatusMessage,
   StickerGroup,
 } from "./types";
-import type { MePatch, PresenceClient } from "./lib/presence";
+import type { MePatch, PartyBrief, PresenceClient } from "./lib/presence";
 import { createPresence } from "./lib/presence";
 import { formatDuration, resolveStatus } from "./lib/status";
 import {
   onTrayMenu,
   setAutoHide,
   hidePopover,
+  openGameWindow,
   setAutoLaunch,
   setFocusMode,
   updateTrayCount,
@@ -27,6 +28,7 @@ import { DetailCard } from "./components/DetailCard";
 import { SettingsModal } from "./components/SettingsModal";
 import { Onboarding } from "./components/Onboarding";
 import { InviteModal } from "./components/InviteModal";
+import { Lobby } from "./components/Lobby";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { ReactionPalette } from "./components/ReactionPalette";
 
@@ -77,7 +79,10 @@ export default function App() {
     null,
   );
   const [party, setParty] = useState<Party | null>(null);
+  const [parties, setParties] = useState<PartyBrief[]>([]);
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  /** 로비를 보고 있는지. 방이 하나도 없으면 강제로 열린다 */
+  const [lobbyOpen, setLobbyOpen] = useState(false);
 
   const [modal, setModal] = useState<Modal>({ kind: "none" });
   const [now, setNow] = useState(Date.now());
@@ -121,6 +126,7 @@ export default function App() {
       try {
         const off = await result.client.start((snap) => {
           setParty(snap.party);
+          setParties(snap.parties);
           setReactions(snap.reactions);
         });
         if (alive) stop = off;
@@ -246,8 +252,8 @@ export default function App() {
   if (!client) return <div className="popover" />;
   const c = client;
 
-  /* ---------- 파티가 없으면 온보딩 ---------- */
-  if (!party) {
+  /* ---------- 방이 하나도 없으면 소개 → 첫 방 만들기 ---------- */
+  if (!party && parties.length === 0 && !lobbyOpen) {
     return (
       <Onboarding
         onCreate={async (name) => {
@@ -258,6 +264,47 @@ export default function App() {
         }}
         onJoin={(code) => c.joinParty(code)}
       />
+    );
+  }
+
+  /* ---------- 로비 ----------
+   * 첫 화면이 아니다. 팝오버를 열면 지금 있는 방이 바로 보이고, 로비는
+   * 헤더에서 들어온다. 방이 하나도 없을 때만 로비가 첫 화면이 된다. */
+  if (lobbyOpen || !party) {
+    return (
+      <>
+        <Lobby
+          parties={parties}
+          currentId={party?.id ?? null}
+          onPick={(id) => {
+            void c.switchParty(id);
+            setLobbyOpen(false);
+          }}
+          onCreate={async (name) => {
+            await c.createParty(name);
+            setLobbyOpen(false);
+            setModal({ kind: "invite" });
+          }}
+          onJoin={async (code) => {
+            await c.joinParty(code);
+            setLobbyOpen(false);
+          }}
+          onLeave={(id) => c.leaveParty(id)}
+          onRename={(id, name) => c.renameParty(id, name)}
+          onInvite={(id) => {
+            void c.switchParty(id);
+            setLobbyOpen(false);
+            setModal({ kind: "invite" });
+          }}
+          onClose={party ? () => setLobbyOpen(false) : null}
+        />
+        {modal.kind === "invite" && party && (
+          <InviteModal
+            party={party}
+            onClose={() => setModal({ kind: "none" })}
+          />
+        )}
+      </>
     );
   }
 
@@ -350,6 +397,13 @@ export default function App() {
         </div>
         <button
           className="icon-btn"
+          onClick={() => void openGameWindow()}
+          title="미니게임"
+        >
+          🎮
+        </button>
+        <button
+          className="icon-btn"
           onClick={() => setModal({ kind: "invite" })}
           title="친구 초대"
         >
@@ -412,7 +466,14 @@ export default function App() {
         )}
         <div className="foot-meta">
           {!c.isLive() && <span className="mock-tag">목 데이터</span>}
-          {onlineCount}명 접속 중
+          {/* 방 이름이 곧 로비 입구. 지금 어느 방을 보고 있는지도 여기서 알 수 있다 */}
+          <button className="room-pill" onClick={() => setLobbyOpen(true)}>
+            {party.name}
+            {parties.length > 1 && (
+              <span className="room-pill-n">{parties.length}</span>
+            )}
+          </button>
+          <span className="foot-count">{onlineCount}명</span>
         </div>
       </div>
 
@@ -479,6 +540,10 @@ export default function App() {
           canLinkAccount={canLink}
           onLinkAccount={() => void c.linkAccount()}
           onInvite={() => setModal({ kind: "invite" })}
+          onOpenLobby={() => {
+            setModal({ kind: "none" });
+            setLobbyOpen(true);
+          }}
           onChange={(patch) => {
             setSettings((s) => {
               if (patch.autoLaunch !== undefined)

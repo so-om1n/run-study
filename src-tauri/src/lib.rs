@@ -153,6 +153,40 @@ fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64, f64)>) {
     }
 }
 
+/// 미니게임 창을 연다.
+///
+/// 팝오버(382×460)에는 워들 보드와 키보드가 안 들어간다. 게다가 팝오버는
+/// 포커스를 잃으면 닫히기 때문에, 게임 중에 다른 창을 누르면 판이 사라진다.
+/// 그래서 게임은 보통의 창으로 따로 띄운다.
+///
+/// 이미 열려 있으면 새로 만들지 않고 앞으로 가져온다.
+#[tauri::command]
+fn open_game_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(win) = app.get_webview_window("game") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "game",
+        tauri::WebviewUrl::App("index.html#game".into()),
+    )
+    .title("run study 미니게임")
+    .inner_size(430.0, 660.0)
+    .min_inner_size(380.0, 520.0)
+    .resizable(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "macos")]
+    let _ = app.show();
+
+    Ok(())
+}
+
 /// 프론트에서 "창이 blur 됐다"고 알려올 때 쓰는 안전망.
 ///
 /// 위 활성화로도 네이티브 포커스 이벤트가 안 오는 경우가 있어서,
@@ -181,7 +215,8 @@ pub fn run() {
             update_tray_count,
             set_auto_launch,
             set_auto_hide,
-            hide_popover
+            hide_popover,
+            open_game_window
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -284,6 +319,10 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // 팝오버에만 적용한다. 게임 창까지 숨겨버리면 게임을 못 한다.
+            if window.label() != "main" {
+                return;
+            }
             // 포커스를 잃으면 팝오버를 닫는다.
             // 단, 모달이 떠 있으면(이모지 창·파일 선택창 등) 그대로 둔다.
             if let tauri::WindowEvent::Focused(false) = event {

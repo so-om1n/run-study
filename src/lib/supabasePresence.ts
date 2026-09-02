@@ -1,8 +1,17 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Member, Party, Reaction, Status } from "../types";
-import type { MePatch, PartySnapshot, PresenceClient } from "./presence";
+import type {
+  GameRow,
+  MePatch,
+  PartyBrief,
+  PartySnapshot,
+  PresenceClient,
+} from "./presence";
 import { toMember } from "./presence";
 import { linkGitHub, supabase, type Session } from "./supabase";
+
+/** 마지막으로 보던 방. 앱을 껐다 켜도 그 방으로 돌아온다 */
+const LS_CURRENT = "runstudy.currentParty";
 
 interface PresencePayload {
   status: Status;
@@ -24,6 +33,7 @@ export class SupabasePresence implements PresenceClient {
   private anon: boolean;
 
   private party: Party | null = null;
+  private parties: PartyBrief[] = [];
   private rows: Record<string, unknown>[] = [];
   private joinedAt: Record<string, string> = {};
   private reactions: Record<string, Reaction[]> = {};
@@ -34,7 +44,12 @@ export class SupabasePresence implements PresenceClient {
   private listener: ((s: PartySnapshot) => void) | null = null;
   private mine: PresencePayload = { status: "online", focus_started_at: null };
 
-  constructor(session: Session) {
+  /**
+   * track=false 면 Presence 채널에 내 온라인 상태를 싣지 않는다.
+   * 게임 창처럼 같은 계정으로 하나 더 붙는 창이 track 까지 하면
+   * presence key 가 겹쳐서 팝오버가 보고하던 상태를 덮어쓴다.
+   */
+  constructor(session: Session, private track = true) {
     this.meId = session.userId;
     this.anon = session.isAnonymous;
   }
@@ -78,19 +93,75 @@ export class SupabasePresence implements PresenceClient {
     }
   }
 
+  /** 내가 들어간 방 전부를 읽고, 그중 하나를 현재 방으로 세운다 */
   private async loadParty() {
+    await this.loadPartyList();
+
+    let want: string | null = null;
+    try {
+      want = localStorage.getItem(LS_CURRENT);
+    } catch {
+      /* 저장소를 못 쓰면 그냥 첫 번째 방 */
+    }
+
+    const pick =
+      this.parties.find((p) => p.id === want) ?? this.parties[0] ?? null;
+    this.party = pick
+      ? { id: pick.id, name: pick.name, code: pick.code, members: [] }
+      : null;
+    if (this.party) {
+      this.remember(this.party.id);
+      await this.subscribe();
+    }
+  }
+
+  /** 로비에 뿌릴 방 목록 */
+  private async loadPartyList() {
     const { data } = await this.db()
       .from("party_member")
-      .select("party_id, party(id, name, code)")
-      .eq("user_id", this.meId)
-      .limit(1)
-      .maybeSingle();
+      .select("party_id, party(id, name, code, created_by)")
+      .eq("user_id", this.meId);
 
-    const p = data?.party as
-      | { id: string; name: string; code: string }
-      | undefined;
-    this.party = p ? { ...p, members: [] } : null;
-    if (this.party) await this.subscribe();
+    const rows = (data ?? [])
+      .map((r) => r.party as unknown)
+      .filter(Boolean) as {
+      id: string;
+      name: string;
+      code: string;
+      created_by: string | null;
+    }[];
+
+    // 방마다 인원수. RLS 가 내가 속한 방만 보여주므로 한 번에 세도 안전하다.
+    const ids = rows.map((r) => r.id);
+    const counts: Record<string, number> = {};
+    if (ids.length) {
+      const { data: mem } = await this.db()
+        .from("party_member")
+        .select("party_id")
+        .in("party_id", ids);
+      for (const m of mem ?? []) {
+        const id = m.party_id as string;
+        counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+
+    this.parties = rows
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        code: r.code,
+        memberCount: counts[r.id] ?? 1,
+        isOwner: r.created_by === this.meId,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }
+
+  private remember(id: string) {
+    try {
+      localStorage.setItem(LS_CURRENT, id);
+    } catch {
+      /* 무시 */
+    }
   }
 
   /** 프로필 · 반응 다시 읽기 */
@@ -165,7 +236,7 @@ export class SupabasePresence implements PresenceClient {
     }
 
     ch.subscribe((status) => {
-      if (status === "SUBSCRIBED") void ch.track(this.mine);
+      if (status === "SUBSCRIBED" && this.track) void ch.track(this.mine);
     });
     this.channel = ch;
   }
@@ -187,6 +258,7 @@ export class SupabasePresence implements PresenceClient {
     );
     this.listener({
       party: this.party ? { ...this.party, members } : null,
+      parties: this.parties,
       reactions: this.reactions,
     });
   }
@@ -197,21 +269,146 @@ export class SupabasePresence implements PresenceClient {
       p_name: name,
     });
     if (error) throw error;
-    const p = data as { id: string; name: string; code: string };
-    this.party = { ...p, members: [] };
-    await this.subscribe();
-    await this.refresh();
-    this.emit();
+    await this.enter(data as { id: string; name: string; code: string });
   }
 
   async joinParty(code: string) {
     const { data, error } = await this.db().rpc("join_party", { p_code: code });
     if (error) throw error;
-    const p = data as { id: string; name: string; code: string };
+    await this.enter(data as { id: string; name: string; code: string });
+  }
+
+  /** 그 방을 현재 방으로 세우고 구독을 옮긴다 */
+  private async enter(p: { id: string; name: string; code: string }) {
     this.party = { ...p, members: [] };
+    this.remember(p.id);
+    // 방을 옮기면 이전 방의 반응·프로필은 남겨두면 안 된다
+    this.rows = [];
+    this.reactions = {};
+    this.live = {};
     await this.subscribe();
+    await this.loadPartyList();
     await this.refresh();
     this.emit();
+  }
+
+  async switchParty(partyId: string) {
+    const target = this.parties.find((p) => p.id === partyId);
+    if (!target || this.party?.id === partyId) return;
+    await this.enter({
+      id: target.id,
+      name: target.name,
+      code: target.code,
+    });
+  }
+
+  async leaveParty(partyId: string) {
+    const { error } = await this.db()
+      .from("party_member")
+      .delete()
+      .eq("party_id", partyId)
+      .eq("user_id", this.meId);
+    if (error) throw error;
+
+    await this.loadPartyList();
+    if (this.party?.id === partyId) {
+      const next = this.parties[0];
+      if (next) {
+        await this.enter(next);
+      } else {
+        void this.channel?.unsubscribe();
+        this.channel = null;
+        this.party = null;
+        this.rows = [];
+        this.reactions = {};
+        this.emit();
+      }
+    } else {
+      this.emit();
+    }
+  }
+
+  async renameParty(partyId: string, name: string) {
+    const trimmed = name.trim().slice(0, 20) || "우리끼리";
+    const { error } = await this.db()
+      .from("party")
+      .update({ name: trimmed })
+      .eq("id", partyId);
+    if (error) throw error;
+    if (this.party?.id === partyId) this.party = { ...this.party, name: trimmed };
+    await this.loadPartyList();
+    this.emit();
+  }
+
+  // ---------- 미니게임 ----------
+  async watchGame(
+    kind: string,
+    day: string,
+    onChange: (rows: GameRow[]) => void,
+  ) {
+    const partyId = this.party?.id;
+    if (!partyId) {
+      onChange([]);
+      return () => {};
+    }
+
+    const pull = async () => {
+      const { data } = await this.db()
+        .from("game_progress")
+        .select("user_id, attempts, solved, marks")
+        .eq("party_id", partyId)
+        .eq("kind", kind)
+        .eq("day", day);
+      onChange(
+        (data ?? []).map((r) => ({
+          userId: r.user_id as string,
+          attempts: (r.attempts as number) ?? 0,
+          solved: Boolean(r.solved),
+          marks: (r.marks as string[]) ?? [],
+        })),
+      );
+    };
+
+    await pull();
+
+    const ch = this.db()
+      .channel(`game:${partyId}:${kind}:${day}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "game_progress",
+          filter: `party_id=eq.${partyId}`,
+        },
+        () => void pull(),
+      );
+    ch.subscribe();
+
+    return () => void ch.unsubscribe();
+  }
+
+  async saveGame(
+    kind: string,
+    day: string,
+    progress: { attempts: number; solved: boolean; marks: string[] },
+  ) {
+    const partyId = this.party?.id;
+    if (!partyId) return;
+    const { error } = await this.db().from("game_progress").upsert(
+      {
+        party_id: partyId,
+        user_id: this.meId,
+        kind,
+        day,
+        attempts: progress.attempts,
+        solved: progress.solved,
+        marks: progress.marks,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "party_id,user_id,kind,day" },
+    );
+    if (error) throw error;
   }
 
   // ---------- 내 상태 ----------
@@ -246,6 +443,7 @@ export class SupabasePresence implements PresenceClient {
   }
 
   async setPresence(status: Status, focusStartedAt: number | null) {
+    if (!this.track) return;
     this.mine = { status, focus_started_at: focusStartedAt };
     await this.channel?.track(this.mine);
   }

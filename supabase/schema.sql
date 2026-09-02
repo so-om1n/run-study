@@ -214,7 +214,77 @@ create policy reaction_delete on public.reaction for delete
   using (by_user_id = auth.uid());
 
 -- ============================================================
--- 6. 실시간 구독 대상
+-- 6. 방 관리 — 이름 바꾸기 / 방 없애기
+--    나가기는 이미 member_delete 로 되어 있다 (나만 나갈 수 있음).
+--    여기서 더 필요한 건 방장 권한이다.
+-- ============================================================
+
+create or replace function public.is_party_owner(p uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.party where id = p and created_by = auth.uid()
+  );
+$$;
+
+drop policy if exists party_update on public.party;
+create policy party_update on public.party for update
+  using (public.is_party_owner(id))
+  with check (public.is_party_owner(id));
+
+drop policy if exists party_delete on public.party;
+create policy party_delete on public.party for delete
+  using (public.is_party_owner(id));
+
+-- ============================================================
+-- 7. 미니게임 진행도
+--
+--    정답은 여기 저장하지 않는다. 같은 파티원이 읽을 수 있는 자리에
+--    두면 그게 곧 커닝 경로가 된다. 정답은 각자 기기에서
+--    (파티 ID + 날짜 + 게임)을 해시해서 뽑는다 — src/lib/game/daily.ts
+--
+--    저장하는 건 "몇 번 만에 어떻게 풀었나" 뿐이다.
+--    marks 는 채점 결과 패턴("hit,near,miss,...")만 담는다.
+--    남의 추측 단어 자체는 안 넘긴다 — 그게 넘어가면 답이 새니까.
+-- ============================================================
+
+create table if not exists public.game_progress (
+  party_id   uuid not null references public.party on delete cascade,
+  user_id    uuid not null references auth.users on delete cascade,
+  kind       text not null check (kind in ('wordle', 'baseball')),
+  day        date not null,
+  attempts   int  not null default 0 check (attempts >= 0 and attempts <= 20),
+  solved     boolean not null default false,
+  -- 각 시도의 채점 결과. 워들은 "hit,near,miss.." 5개, 야구는 "2S1B" 같은 것
+  marks      text[] not null default '{}',
+  updated_at timestamptz not null default now(),
+  primary key (party_id, user_id, kind, day)
+);
+
+create index if not exists game_progress_day_idx
+  on public.game_progress (party_id, kind, day);
+
+alter table public.game_progress enable row level security;
+
+-- 같은 파티면 서로의 진행도가 보인다. 쓰는 건 내 행만.
+drop policy if exists game_select on public.game_progress;
+create policy game_select on public.game_progress for select
+  using (public.is_party_member(party_id));
+
+drop policy if exists game_insert on public.game_progress;
+create policy game_insert on public.game_progress for insert
+  with check (user_id = auth.uid() and public.is_party_member(party_id));
+
+drop policy if exists game_update on public.game_progress;
+create policy game_update on public.game_progress for update
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists game_delete on public.game_progress;
+create policy game_delete on public.game_progress for delete
+  using (user_id = auth.uid());
+
+-- ============================================================
+-- 8. 실시간 구독 대상
 --    이미 들어가 있으면 42710 에러가 나므로 확인 후 추가한다.
 --    (이 파일 전체는 몇 번을 다시 실행해도 안전하다)
 -- ============================================================
@@ -222,7 +292,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profile', 'reaction', 'party_member'] loop
+  foreach t in array array['profile', 'reaction', 'party_member', 'game_progress'] loop
     if not exists (
       select 1
         from pg_publication_tables

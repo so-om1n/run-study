@@ -7,11 +7,33 @@ import type {
   StatusMessage,
 } from "../types";
 
+/** 로비 목록에 뜨는 한 줄 */
+export interface PartyBrief {
+  id: string;
+  name: string;
+  code: string;
+  memberCount: number;
+  /** 내가 만든 방인지 — 이름 바꾸기·없애기는 방장만 */
+  isOwner: boolean;
+}
+
 /** 화면이 필요로 하는 공유 상태 전부 */
 export interface PartySnapshot {
+  /** 지금 보고 있는 방 */
   party: Party | null;
+  /** 내가 들어가 있는 방 전부 (로비용) */
+  parties: PartyBrief[];
   /** 대상 유저 id → 그 사람이 받은 반응들 */
   reactions: Record<string, Reaction[]>;
+}
+
+/** 미니게임에서 한 사람의 오늘 진행도 */
+export interface GameRow {
+  userId: string;
+  attempts: number;
+  solved: boolean;
+  /** 시도별 채점 결과만. 추측한 단어 자체는 안 넘긴다 — 답이 새니까 */
+  marks: string[];
 }
 
 export interface MePatch {
@@ -44,6 +66,29 @@ export interface PresenceClient {
 
   createParty(name: string): Promise<void>;
   joinParty(code: string): Promise<void>;
+  /** 보고 있는 방을 바꾼다 */
+  switchParty(partyId: string): Promise<void>;
+  /** 나만 나간다. 방장이어도 방은 남는다 */
+  leaveParty(partyId: string): Promise<void>;
+  /** 방장만 */
+  renameParty(partyId: string, name: string): Promise<void>;
+
+  /**
+   * 오늘 이 방의 게임 진행도를 구독한다. 정리 함수를 돌려준다.
+   * 팝오버와 게임 창이 각각 켜고 끌 수 있어야 해서 따로 뺐다.
+   */
+  watchGame(
+    kind: string,
+    day: string,
+    onChange: (rows: GameRow[]) => void,
+  ): Promise<() => void>;
+
+  /** 내 진행도를 올린다 */
+  saveGame(
+    kind: string,
+    day: string,
+    progress: { attempts: number; solved: boolean; marks: string[] },
+  ): Promise<void>;
 
   updateMe(patch: MePatch): Promise<void>;
   setPresence(status: Status, focusStartedAt: number | null): Promise<void>;
@@ -109,7 +154,9 @@ export type PresenceResult =
  * "되네?" 하고 넘어가고, 정작 친구는 안 보이는데 이유를 모르게 된다.
  * 그래서 그때는 에러를 그대로 올린다.
  */
-export async function createPresence(): Promise<PresenceResult> {
+export async function createPresence(
+  opts: { track?: boolean } = {},
+): Promise<PresenceResult> {
   const { supabase, ensureSession } = await import("./supabase");
 
   if (!supabase) {
@@ -128,7 +175,7 @@ export async function createPresence(): Promise<PresenceResult> {
       };
     }
     const { SupabasePresence } = await import("./supabasePresence");
-    return { ok: true, client: new SupabasePresence(session) };
+    return { ok: true, client: new SupabasePresence(session, opts.track ?? true) };
   } catch (e) {
     return {
       ok: false,
