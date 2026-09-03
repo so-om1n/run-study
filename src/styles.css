@@ -1852,3 +1852,40 @@ button:focus-visible {
 .ub-x:hover {
   opacity: 1;
 }
+
+/* ---- 크래시 화면 ----
+   하얀 화면 대신 원인을 보여준다. 이게 없으면 릴리스 빌드에서
+   "에러 난다"는 말만 오가고 원인을 영영 못 찾는다. */
+.crash {
+  padding: 20px 18px;
+  background: var(--card);
+  height: 100%;
+  overflow-y: auto;
+  user-select: text;
+}
+.crash h4 {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--red);
+}
+.crash-detail {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fbf9ff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--ink-mid);
+  max-height: 60vh;
+  overflow: auto;
+}
+.crash-hint {
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}

@@ -118,6 +118,15 @@ export function SettingsModal({
             </button>
           </div>
 
+          <div className="list-item">
+            <div>
+              <div className="li-main">버전</div>
+              <div className="li-sub">
+                {__APP_VERSION__} · 문제가 있으면 이 번호를 알려주세요
+              </div>
+            </div>
+          </div>
+
           {canLinkAccount && (
             <div className="list-item">
               <div>
