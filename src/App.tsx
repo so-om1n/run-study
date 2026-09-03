@@ -220,7 +220,27 @@ export default function App() {
     if (!canAutoHide) return;
     const onBlur = () => void hidePopover();
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+
+    /* blur 이벤트가 아예 안 오는 환경이 있다(윈도우의 테두리 없는 창).
+     * 그래서 이벤트를 기다리는 것과 별개로, 상태를 직접 물어보는 길을
+     * 하나 더 둔다. document.hasFocus() 는 이벤트와 무관하게 항상
+     * 지금 값을 돌려준다.
+     *
+     * 이 폴링은 반드시 웹뷰 쪽에서 해야 한다. 러스트에서 백그라운드
+     * 스레드로 창 상태를 물으면 그 호출이 메인 스레드로 넘어가면서
+     * 이벤트 루프를 붙잡고, 윈도우에서는 다른 창이 뜨지도 닫히지도
+     * 않는 상태가 된다. */
+    let wasFocused = document.hasFocus();
+    const timer = window.setInterval(() => {
+      const now = document.hasFocus();
+      if (wasFocused && !now) void hidePopover();
+      wasFocused = now;
+    }, 400);
+
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.clearInterval(timer);
+    };
   }, [canAutoHide]);
 
   /* ---------- Esc 로 언제나 닫을 수 있게 ----------
