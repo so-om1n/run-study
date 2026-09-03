@@ -5,11 +5,13 @@ import type { Member } from "./types";
 import type { GameKind } from "./lib/game/rules";
 import { todayKey } from "./lib/game/daily";
 import { GameBoard } from "./components/GameBoard";
+import { describe } from "./crash";
 
 /**
  * 미니게임 창.
  *
- * 팝오버와 같은 번들을 쓰고 해시(#game)로 갈린다. 창을 따로 띄우는 이유:
+ * game.html 을 여는 전용 창이다. 팝오버와 번들은 공유한다.
+ * 창을 따로 띄우는 이유:
  *   - 팝오버(382×460)에는 보드 + 키보드가 안 들어간다
  *   - 팝오버는 포커스를 잃으면 닫힌다. 게임 중에 사라지면 안 된다
  *
@@ -24,6 +26,8 @@ export function GameWindow() {
   const [members, setMembers] = useState<Member[]>([]);
   const [kind, setKind] = useState<GameKind>("wordle");
   const [rows, setRows] = useState<GameRow[]>([]);
+  /** 진행도 저장 실패. 게임은 계속 되게 두고 띠로만 알린다 */
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let stop: (() => void) | null = null;
@@ -107,13 +111,27 @@ export function GameWindow() {
         <div className="game-room">{partyName}</div>
       </div>
 
+      {saveError && (
+        <div className="game-warn">
+          <b>친구들에게 진행도를 못 보내고 있어요.</b> 혼자 푸는 건 그대로 돼요.
+          <pre>{saveError}</pre>
+        </div>
+      )}
+
       <GameBoard
         kind={kind}
         partyId={partyId}
         meId={client.meId}
         members={members}
         rows={rows}
-        onProgress={(p) => void client.saveGame(kind, todayKey(), p)}
+        onProgress={(p) => {
+          // 저장이 실패해도 판은 계속 돌아가야 한다. 여기서 예외가
+          // 새어나가면 화면 전체가 오류 화면으로 바뀌어 게임을 못 한다.
+          void client.saveGame(kind, todayKey(), p).then(
+            () => setSaveError(null),
+            (e) => setSaveError(describe(e)),
+          );
+        }}
       />
     </div>
   );

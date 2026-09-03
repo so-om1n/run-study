@@ -27,6 +27,31 @@ export function paintError(title: string, detail: string) {
   if (pre) pre.textContent = detail;
 }
 
+/**
+ * 오류를 사람이 읽을 수 있는 글로 바꾼다.
+ *
+ * Supabase 같은 라이브러리는 Error 가 아니라 그냥 객체를 던진다.
+ * String() 을 쓰면 "[object Object]" 만 남아서 아무 정보가 없다.
+ */
+export function describe(e: unknown): string {
+  if (e instanceof Error) return `${e.message}\n${e.stack ?? ""}`;
+  if (typeof e === "object" && e !== null) {
+    try {
+      // message / code / hint / details 처럼 흔한 필드를 앞에 세운다
+      const o = e as Record<string, unknown>;
+      const head = ["message", "code", "hint", "details"]
+        .filter((k) => o[k] !== undefined)
+        .map((k) => `${k}: ${String(o[k])}`)
+        .join("\n");
+      const full = JSON.stringify(e, null, 2);
+      return head ? `${head}\n\n${full}` : full;
+    } catch {
+      return Object.prototype.toString.call(e);
+    }
+  }
+  return String(e);
+}
+
 export function installCrashScreen() {
   window.addEventListener("error", (e) => {
     paintError(
@@ -35,11 +60,7 @@ export function installCrashScreen() {
     );
   });
   window.addEventListener("unhandledrejection", (e) => {
-    const r = e.reason;
-    paintError(
-      "처리하지 못한 오류가 있어요",
-      r instanceof Error ? `${r.message}\n${r.stack ?? ""}` : String(r),
-    );
+    paintError("처리하지 못한 오류가 있어요", describe(e.reason));
   });
 }
 

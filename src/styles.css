@@ -1889,3 +1889,29 @@ button:focus-visible {
   color: var(--ink-soft);
   line-height: 1.6;
 }
+
+/* 진행도 저장이 실패했을 때. 게임 자체는 계속 되므로 띠로만 알린다 */
+.game-warn {
+  margin: 0 14px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fdf2f1;
+  color: var(--ink-mid);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.game-warn b {
+  color: var(--red);
+  font-weight: 800;
+}
+.game-warn pre {
+  margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 90px;
+  overflow: auto;
+  color: var(--ink-soft);
+  user-select: text;
+}
