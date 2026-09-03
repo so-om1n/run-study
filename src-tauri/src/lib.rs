@@ -128,6 +128,63 @@ fn position_near_tray(
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
+/// 팝오버가 열려 있는 동안 포커스를 잃었는지 직접 물어본다.
+///
+/// 원래는 `WindowEvent::Focused(false)` 하나로 충분해야 한다. 그런데
+/// 윈도우에서는 이 창이 (테두리 없음 + 항상 위 + 작업 표시줄 숨김)이라
+/// 그 이벤트가 오지 않는 경우가 있다. 이벤트를 기다리는 대신 상태를
+/// 짧은 주기로 조회하면, 이벤트가 안 와도 전환을 잡아낼 수 있다.
+///
+/// 한 번도 포커스를 받은 적이 없으면 아무것도 하지 않는다. 그 상태에서
+/// 숨겨버리면 창이 뜨자마자 사라져서 더 나쁘다.
+fn watch_focus(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let handle = app.clone();
+
+    std::thread::spawn(move || {
+        let mut seen_focused = false;
+        // 포커스를 영영 못 받는 창이면 폴링이 계속 돌 이유가 없다.
+        // 300ms × 40 = 12초 정도 지켜보고 접는다.
+        let mut ticks_without_focus = 0;
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+
+            // 창이 이미 닫혔으면 끝
+            if !window.is_visible().unwrap_or(false) {
+                return;
+            }
+
+            let focused = window.is_focused().unwrap_or(false);
+            if focused {
+                seen_focused = true;
+                ticks_without_focus = 0;
+                continue;
+            }
+
+            if !seen_focused {
+                ticks_without_focus += 1;
+                if ticks_without_focus > 40 {
+                    return;
+                }
+                continue;
+            }
+
+            // 포커스를 받았다가 잃었다 — 모달이 떠 있지 않으면 숨긴다
+            let keep_open = handle
+                .try_state::<AutoHide>()
+                .map(|s| !s.0.load(Ordering::Relaxed))
+                .unwrap_or(false);
+            if !keep_open {
+                let _ = window.hide();
+                return;
+            }
+        }
+    });
+}
+
 fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64, f64)>) {
     let Some(window) = app.get_webview_window("main") else {
         return;
@@ -150,6 +207,7 @@ fn toggle_popover(app: &tauri::AppHandle, at: Option<(f64, f64, f64)>) {
         let _ = app.show();
 
         let _ = window.set_focus();
+        watch_focus(app);
     }
 }
 

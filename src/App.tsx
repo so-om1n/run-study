@@ -222,6 +222,23 @@ export default function App() {
     return () => window.removeEventListener("blur", onBlur);
   }, [canAutoHide]);
 
+  /* ---------- Esc 로 언제나 닫을 수 있게 ----------
+   * 포커스 신호가 안 오는 환경에서는 위의 자동 숨김이 전부 실패한다.
+   * 그때 팝오버가 화면에 박혀 있으면 끌 방법이 없으므로, 어떤 경로로도
+   * 확실히 닫히는 손잡이를 하나 남긴다. 모달이 떠 있으면 모달만 닫는다. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (palette) return setPalette(null);
+      if (pendingRemove) return setPendingRemove(null);
+      if (modal.kind !== "none") return setModal({ kind: "none" });
+      if (lobbyOpen && party) return setLobbyOpen(false);
+      void hidePopover();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modal.kind, pendingRemove, palette, lobbyOpen, party]);
+
   useEffect(() => save(LS.manual, manual), [manual]);
   useEffect(() => save(LS.settings, settings), [settings]);
 
