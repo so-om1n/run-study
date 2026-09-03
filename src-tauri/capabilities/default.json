@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "run study 기본 권한",
-  "windows": ["main"],
+  "windows": [
+    "main",
+    "game"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -10,6 +13,9 @@
     "core:window:allow-set-position",
     "core:window:allow-set-focus",
     "core:window:allow-start-dragging",
-    "autostart:default"
+    "autostart:default",
+    "updater:default",
+    "core:window:allow-unminimize",
+    "process:allow-restart"
   ]
 }

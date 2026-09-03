@@ -10,7 +10,7 @@ const members: Member[] = [
   {
     id: ME_ID,
     name: "수민",
-    handle: "sumin9948",
+    handle: "runner",
     profile: { characterColor: "#F0C96B", photo: null, shape: "cloud", crop: DEFAULT_CROP },
     background: "#F7EBD3",
     backgroundIsDark: false,

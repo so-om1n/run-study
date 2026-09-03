@@ -269,6 +269,12 @@ fn hide_popover(app: tauri::AppHandle, state: tauri::State<'_, AutoHide>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // 업데이트: 앱이 릴리스의 latest.json 을 보고 새 버전을 받아 설치한다.
+        // 서명 확인이 필수라 아무나 가짜 업데이트를 밀어넣을 수 없다.
+        // (앱 실행 경고를 없애주는 코드 서명과는 별개의 키다)
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // 업데이트 설치 후 재시작에 필요하다
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,

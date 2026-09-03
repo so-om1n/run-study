@@ -29,6 +29,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { Onboarding } from "./components/Onboarding";
 import { InviteModal } from "./components/InviteModal";
 import { Lobby } from "./components/Lobby";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { ReactionPalette } from "./components/ReactionPalette";
 
@@ -394,6 +395,7 @@ export default function App() {
 
   return (
     <div className="popover" ref={popoverRef}>
+      <UpdateBanner />
       <div className="pop-head">
         <button
           className="me-av"

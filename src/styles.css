@@ -1805,3 +1805,50 @@ button:focus-visible {
   text-underline-offset: 2px;
   padding: 0;
 }
+
+/* ---- 업데이트 알림 ---- */
+.update-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11.5px;
+  flex: none;
+}
+.ub-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+.ub-text b {
+  font-weight: 800;
+}
+.ub-notes {
+  display: block;
+  opacity: 0.85;
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ub-go {
+  flex: none;
+  background: #fff;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 5px 11px;
+}
+.ub-x {
+  flex: none;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.ub-x:hover {
+  opacity: 1;
+}
