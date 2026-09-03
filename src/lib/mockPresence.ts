@@ -298,7 +298,7 @@ export class MockPresence implements PresenceClient {
     const rest = (this.games[key] ?? []).filter((r) => r.userId !== ME_ID);
     this.games = {
       ...this.games,
-      [key]: [...rest, { userId: ME_ID, ...progress }],
+      [key]: [...rest, { userId: ME_ID, ...progress, updatedAt: Date.now() }],
     };
     save(LS_GAMES, this.games);
     this.gameListeners.get(key)?.(this.games[key]);

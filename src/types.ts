@@ -93,6 +93,8 @@ export interface Settings {
   defaultExpiryHours: number | null;
   /** 타이머 종료 시 (타이머로 진입한) 집중 중 자동 해제 */
   releaseFocusOnTimerEnd: boolean;
+  /** 집중 중일 때 얼마나 됐는지를 친구들에게 보여줄지. 기본은 보여줌 */
+  shareFocusTime: boolean;
   shortcutName: string;
 }
 

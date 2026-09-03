@@ -34,6 +34,8 @@ export interface GameRow {
   solved: boolean;
   /** 시도별 채점 결과만. 추측한 단어 자체는 안 넘긴다 — 답이 새니까 */
   marks: string[];
+  /** 마지막으로 올린 시각. 같은 횟수로 풀었으면 먼저 푼 쪽이 위 */
+  updatedAt: number;
 }
 
 export interface MePatch {

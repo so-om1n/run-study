@@ -1697,6 +1697,25 @@ button {
   width: 22px;
   height: 22px;
   flex: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+/* Face 는 모양(.shape)이 배경을 그린다. 크기만 주고 이 규칙을 빼먹으면
+   몸통이 안 보이고 눈 두 개만 떠 있게 된다. */
+.gf-face .shape {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.gf-face .eyes {
+  gap: 4px;
+}
+.gf-face .eyes i {
+  width: 2.5px;
+  height: 3px;
 }
 .gf-name {
   font-size: 12.5px;
@@ -1914,4 +1933,55 @@ button:focus-visible {
   overflow: auto;
   color: var(--ink-soft);
   user-select: text;
+}
+
+/* 남은 시도 횟수 */
+.game-tries {
+  font-size: 12px;
+  color: var(--ink-mid);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.game-tries b {
+  font-weight: 800;
+  color: var(--ink);
+}
+.game-tries b.ok {
+  color: #2f7d55;
+}
+.game-tries b.no {
+  color: var(--red);
+}
+/* 지금 치고 있는 줄만 살짝 띄운다 */
+.g-row.typing .g-cell {
+  border-color: #d6cdf0;
+}
+
+/* 순위표 */
+.gf-rank {
+  width: 16px;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--accent);
+  text-align: center;
+}
+.gf-row.me {
+  background: var(--soft);
+  border-radius: 9px;
+  margin: 0 -6px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.gf-me {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 5px;
+  padding: 1px 4px;
+  margin-left: 5px;
+}
+.gf-state.ok {
+  color: #2f7d55;
 }

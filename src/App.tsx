@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: Settings = {
   muteNotifications: true,
   defaultExpiryHours: 24,
   releaseFocusOnTimerEnd: true,
+  shareFocusTime: true,
   shortcutName: "run study 집중",
 };
 
@@ -149,8 +150,13 @@ export default function App() {
 
   /* ---------- 내 상태를 파티에 알림 ---------- */
   useEffect(() => {
-    void client?.setPresence(myStatus, timerStartedAt);
-  }, [client, myStatus, timerStartedAt]);
+    // 시작 시각을 안 보내면 상대는 "집중 중"만 보고 시간은 못 본다.
+    // 상태 자체는 그대로 공유된다.
+    void client?.setPresence(
+      myStatus,
+      settings.shareFocusTime ? timerStartedAt : null,
+    );
+  }, [client, myStatus, timerStartedAt, settings.shareFocusTime]);
 
   /* ---------- 1초 틱 (누군가 집중 중일 때만) ---------- */
   const anyFocus =

@@ -151,17 +151,71 @@ export function GameBoard({
     [attempts, kind],
   );
 
-  const rowsToDraw = Array.from({ length: max }, (_, i) => attempts[i] ?? null);
-  const others = rows.filter((r) => r.userId !== meId);
+  /* 미리 빈 칸을 다 깔지 않는다. 제출한 줄들 + (아직이면) 지금 치는 줄
+   * 한 개만 그린다. 남은 횟수는 숫자로 따로 보여주므로, 빈 칸이 줄 수를
+   * 알려줄 필요가 없다. */
+  const left = max - attempts.length;
+
+  /* 오늘의 순위.
+   *
+   * 다 같이 같은 문제를 푸니까 "몇 번 만에 풀었나"로 줄을 세울 수 있다.
+   * 정렬 규칙: 푼 사람 먼저(적은 횟수 → 먼저 푼 순), 그다음 푸는 중,
+   * 기회를 다 쓴 사람, 아직 시작 안 한 사람 순.
+   * 나도 목록에 포함한다 — 내 등수를 못 보면 순위표가 아니다. */
+  const ranked = useMemo(() => {
+    const byUser = new Map(rows.map((r) => [r.userId, r]));
+    const entries = members.map((member) => ({
+      member,
+      row: byUser.get(member.id),
+    }));
+
+    const bucket = (e: (typeof entries)[number]) => {
+      if (!e.row) return 3;
+      if (e.row.solved) return 0;
+      return e.row.attempts >= max ? 2 : 1;
+    };
+
+    entries.sort((a, b) => {
+      const d = bucket(a) - bucket(b);
+      if (d !== 0) return d;
+      if (a.row?.solved && b.row?.solved) {
+        return (
+          a.row.attempts - b.row.attempts || a.row.updatedAt - b.row.updatedAt
+        );
+      }
+      // 푸는 중이면 많이 진행한 쪽이 위
+      return (b.row?.attempts ?? 0) - (a.row?.attempts ?? 0);
+    });
+
+    // 등수는 푼 사람에게만 매긴다
+    let n = 0;
+    return entries.map((e) => ({
+      ...e,
+      rank: e.row?.solved ? ++n : null,
+    }));
+  }, [members, rows, max]);
 
   return (
     <div className={`game${kind === "baseball" ? " bb" : ""}`}>
+      <div className="game-tries">
+        {done ? (
+          solved ? (
+            <b className="ok">{attempts.length}번 만에 성공</b>
+          ) : (
+            <b className="no">기회를 다 썼어요</b>
+          )
+        ) : (
+          <>
+            남은 시도 <b>{left}</b>번
+          </>
+        )}
+      </div>
+
       <div className="game-board">
-        {rowsToDraw.map((a, i) => {
-          const text =
-            a?.guess ?? (i === attempts.length && !done ? input : "");
+        {[...attempts, ...(done ? [] : [null])].map((a, i) => {
+          const text = a?.guess ?? (done ? "" : input);
           return (
-            <div className="g-row" key={i}>
+            <div className={`g-row${a ? "" : " typing"}`} key={i}>
               {Array.from({ length: len }, (_, j) => (
                 <div
                   key={j}
@@ -195,18 +249,9 @@ export function GameBoard({
 
       {toast && <div className="game-toast">{toast}</div>}
 
-      {done && (
-        <div className={`game-result${solved ? " win" : ""}`}>
-          {solved ? (
-            <>
-              <b>{attempts.length}번</b> 만에 맞혔어요
-            </>
-          ) : (
-            <>
-              오늘은 못 맞혔어요 · 정답은{" "}
-              <b>{secret.toUpperCase()}</b>
-            </>
-          )}
+      {done && !solved && (
+        <div className="game-result">
+          정답은 <b>{secret.toUpperCase()}</b> 였어요
         </div>
       )}
 
@@ -242,38 +287,40 @@ export function GameBoard({
       )}
 
       <div className="game-friends">
-        <div className="gf-title">같이 푸는 중</div>
-        {others.length === 0 && (
-          <div className="gf-empty">아직 아무도 시작 안 했어요</div>
-        )}
-        {others.map((r) => {
-          const m = members.find((x) => x.id === r.userId);
+        <div className="gf-title">
+          {ranked.some((r) => r.row?.solved) ? "오늘의 순위" : "같이 푸는 중"}
+        </div>
+        {ranked.map(({ member, row, rank }) => {
+          const isMe = member.id === meId;
+          const failed = row && !row.solved && row.attempts >= max;
           return (
-            <div className="gf-row" key={r.userId}>
-              {m && <Face profile={m.profile} className="gf-face" />}
-              <div className="gf-name">{m?.name ?? "누군가"}</div>
+            <div className={`gf-row${isMe ? " me" : ""}`} key={member.id}>
+              <div className="gf-rank">{rank ?? ""}</div>
+              <Face profile={member.profile} className="gf-face" />
+              <div className="gf-name">
+                {member.name}
+                {isMe && <span className="gf-me">나</span>}
+              </div>
               <div className="gf-dots">
-                {r.marks.map((mk, i) => (
+                {(row?.marks ?? []).map((_, i) => (
                   <span
                     key={i}
                     className={`gf-dot${
-                      kind === "wordle"
-                        ? mk === "h".repeat(wordLength("wordle"))
-                          ? " win"
-                          : ""
-                        : mk.startsWith(String(BASEBALL.length))
-                          ? " win"
-                          : ""
+                      i === (row?.marks.length ?? 0) - 1 && row?.solved
+                        ? " win"
+                        : ""
                     }`}
                   />
                 ))}
               </div>
-              <div className="gf-state">
-                {r.solved
-                  ? `${r.attempts}번`
-                  : r.attempts >= max
+              <div className={`gf-state${row?.solved ? " ok" : ""}`}>
+                {row?.solved
+                  ? `${row.attempts}번`
+                  : failed
                     ? "실패"
-                    : `${r.attempts}/${max}`}
+                    : row
+                      ? `${row.attempts}/${max}`
+                      : "아직"}
               </div>
             </div>
           );

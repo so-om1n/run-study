@@ -90,6 +90,21 @@ export function SettingsModal({
 
           <div className="list-item">
             <div>
+              <div className="li-main">집중 시간 보여주기</div>
+              <div className="li-sub">
+                끄면 친구들에게 "집중 중"만 보이고 몇 분째인지는 안 보여요
+              </div>
+            </div>
+            <button
+              className={`toggle${settings.shareFocusTime ? " on" : ""}`}
+              onClick={() =>
+                onChange({ shareFocusTime: !settings.shareFocusTime })
+              }
+            />
+          </div>
+
+          <div className="list-item">
+            <div>
               <div className="li-main">타이머 종료 시 집중 중 해제</div>
               <div className="li-sub">수동으로 켠 집중 중은 유지됩니다</div>
             </div>

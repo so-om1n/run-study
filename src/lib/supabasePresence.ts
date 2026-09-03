@@ -355,7 +355,7 @@ export class SupabasePresence implements PresenceClient {
     const pull = async () => {
       const { data } = await this.db()
         .from("game_progress")
-        .select("user_id, attempts, solved, marks")
+        .select("user_id, attempts, solved, marks, updated_at")
         .eq("party_id", partyId)
         .eq("kind", kind)
         .eq("day", day);
@@ -365,6 +365,9 @@ export class SupabasePresence implements PresenceClient {
           attempts: (r.attempts as number) ?? 0,
           solved: Boolean(r.solved),
           marks: (r.marks as string[]) ?? [],
+          updatedAt: r.updated_at
+            ? new Date(r.updated_at as string).getTime()
+            : 0,
         })),
       );
     };
