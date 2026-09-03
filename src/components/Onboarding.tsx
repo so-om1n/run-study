@@ -3,8 +3,8 @@ import { CHARACTERS, DEFAULT_CROP } from "../types";
 import { Face } from "./Face";
 
 interface Props {
-  onCreate: (name: string) => Promise<void>;
-  onJoin: (code: string) => Promise<void>;
+  onCreate: (partyName: string, myName: string) => Promise<void>;
+  onJoin: (code: string, myName: string) => Promise<void>;
 }
 
 /**
@@ -16,6 +16,9 @@ export function Onboarding({ onCreate, onJoin }: Props) {
   const [mode, setMode] = useState<"pick" | "create" | "join">("pick");
   const [code, setCode] = useState("");
   const [name, setName] = useState("우리끼리");
+  // 첫 실행에 여기서 안 받으면 친구들 화면에 "이름 없음"으로 뜬다.
+  // 스텝을 늘리지 않으려고 기존 폼 위에 얹었다.
+  const [myName, setMyName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +91,16 @@ export function Onboarding({ onCreate, onJoin }: Props) {
 
         {step === 1 && mode === "create" && (
           <>
+            <div className="field-label">내 이름</div>
+            <div className="input plain" style={{ marginBottom: 14 }}>
+              <input
+                value={myName}
+                maxLength={12}
+                placeholder="친구들에게 보일 이름"
+                onChange={(e) => setMyName(e.target.value)}
+              />
+            </div>
+
             <div className="field-label">파티 이름</div>
             <div className="input plain" style={{ marginBottom: 14 }}>
               <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -95,9 +108,13 @@ export function Onboarding({ onCreate, onJoin }: Props) {
             {error && <div className="form-error">{error}</div>}
             <button
               className="btn-full"
-              disabled={busy}
-              style={busy ? { opacity: 0.5 } : undefined}
-              onClick={() => void run(() => onCreate(name))}
+              disabled={busy || myName.trim().length === 0}
+              style={
+                busy || myName.trim().length === 0
+                  ? { opacity: 0.5 }
+                  : undefined
+              }
+              onClick={() => void run(() => onCreate(name, myName.trim()))}
             >
               {busy ? "만드는 중…" : "만들기"}
             </button>
@@ -109,6 +126,16 @@ export function Onboarding({ onCreate, onJoin }: Props) {
 
         {step === 1 && mode === "join" && (
           <>
+            <div className="field-label">내 이름</div>
+            <div className="input plain" style={{ marginBottom: 14 }}>
+              <input
+                value={myName}
+                maxLength={12}
+                placeholder="친구들에게 보일 이름"
+                onChange={(e) => setMyName(e.target.value)}
+              />
+            </div>
+
             <div className="field-label">초대 코드</div>
             <div className="input plain" style={{ marginBottom: 14 }}>
               <input
@@ -127,9 +154,13 @@ export function Onboarding({ onCreate, onJoin }: Props) {
             {error && <div className="form-error">{error}</div>}
             <button
               className="btn-full"
-              disabled={code.length < 6 || busy}
-              style={code.length < 6 || busy ? { opacity: 0.45 } : undefined}
-              onClick={() => void run(() => onJoin(code))}
+              disabled={code.length < 6 || busy || myName.trim().length === 0}
+              style={
+                code.length < 6 || busy || myName.trim().length === 0
+                  ? { opacity: 0.45 }
+                  : undefined
+              }
+              onClick={() => void run(() => onJoin(code, myName.trim()))}
             >
               {busy ? "들어가는 중…" : "참여"}
             </button>

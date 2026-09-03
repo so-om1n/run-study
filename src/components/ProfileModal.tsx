@@ -14,16 +14,22 @@ const SHAPES: FaceShape[] = [
 
 interface Props {
   profile: Profile;
+  name: string;
   onClose: () => void;
   onBack: () => void;
-  onSave: (profile: Profile) => void;
+  onSave: (profile: Profile, name: string) => void;
 }
 
-export function ProfileModal({ profile, onClose, onBack, onSave }: Props) {
+/** DB 기본값. 이걸 그대로 두고 저장하게 두면 다 "이름 없음"이 된다 */
+const PLACEHOLDER_NAME = "이름 없음";
+
+export function ProfileModal({ profile, name, onClose, onBack, onSave }: Props) {
   const [tab, setTab] = useState<"character" | "photo">(
     profile.photo ? "photo" : "character",
   );
   const [draft, setDraft] = useState<Profile>(profile);
+  // 기본값이면 빈칸으로 보여준다. 지우고 쓰게 만들면 손이 하나 더 간다
+  const [nick, setNick] = useState(name === PLACEHOLDER_NAME ? "" : name);
   const dragRef = useRef<{ x: number; y: number; crop: Crop } | null>(null);
 
   function pickPhoto() {
@@ -86,6 +92,16 @@ export function ProfileModal({ profile, onClose, onBack, onSave }: Props) {
         </div>
 
         <div className="modal-body">
+          <div className="field-label">이름</div>
+          <div className="input plain" style={{ marginBottom: 16 }}>
+            <input
+              value={nick}
+              maxLength={12}
+              placeholder="친구들에게 보일 이름"
+              onChange={(e) => setNick(e.target.value)}
+            />
+          </div>
+
           <div className="tabs">
             <button
               className={`tab${tab === "character" ? " act" : ""}`}
@@ -224,7 +240,12 @@ export function ProfileModal({ profile, onClose, onBack, onSave }: Props) {
 
         <div className="modal-foot">
           <span />
-          <button className="save" onClick={() => onSave(draft)}>
+          <button
+            className="save"
+            disabled={nick.trim().length === 0}
+            style={nick.trim().length === 0 ? { opacity: 0.45 } : undefined}
+            onClick={() => onSave(draft, nick.trim())}
+          >
             저장
           </button>
         </div>

@@ -256,13 +256,19 @@ export default function App() {
   if (!party && parties.length === 0 && !lobbyOpen) {
     return (
       <Onboarding
-        onCreate={async (name) => {
-          await c.createParty(name);
+        onCreate={async (partyName, myName) => {
+          // 이름을 먼저 올린다. 파티에 들어간 뒤에 올리면 친구 화면에
+          // "이름 없음"이 잠깐이라도 보인다.
+          await c.updateMe({ name: myName });
+          await c.createParty(partyName);
           // 만들자마자 코드를 보여준다. 여기서 안 보여주면 파티는
           // 만들었는데 친구를 부를 방법이 없는 상태가 된다.
           setModal({ kind: "invite" });
         }}
-        onJoin={(code) => c.joinParty(code)}
+        onJoin={async (code, myName) => {
+          await c.updateMe({ name: myName });
+          await c.joinParty(code);
+        }}
       />
     );
   }
@@ -387,7 +393,18 @@ export default function App() {
           )}
         </button>
         <div className="me-info">
-          <div className="me-name">{me?.name ?? "나"}</div>
+          {me?.name === "이름 없음" ? (
+            /* 이름을 한 번도 안 정한 사람. 친구 화면에도 "이름 없음"으로
+               떠 있는 상태라 여기서 바로 눈에 띄게 해준다 */
+            <button
+              className="me-name needs-name"
+              onClick={() => setModal({ kind: "profile" })}
+            >
+              이름 설정하기
+            </button>
+          ) : (
+            <div className="me-name">{me?.name ?? "나"}</div>
+          )}
           <div
             className="me-status"
             onClick={() => setModal({ kind: "status" })}
@@ -520,10 +537,11 @@ export default function App() {
       {modal.kind === "profile" && me && (
         <ProfileModal
           profile={me.profile}
+          name={me.name}
           onClose={() => setModal({ kind: "none" })}
           onBack={() => setModal({ kind: "status" })}
-          onSave={(profile: Profile) => {
-            patchMe({ profile });
+          onSave={(profile: Profile, name: string) => {
+            patchMe({ profile, name });
             setModal({ kind: "status" });
           }}
         />

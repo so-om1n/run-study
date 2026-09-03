@@ -1796,3 +1796,12 @@ button:focus-visible {
 .game.bb .game-board {
   gap: 4px;
 }
+
+/* 이름을 아직 안 정한 사람에게 보이는 헤더 버튼.
+   친구 화면에도 "이름 없음"으로 떠 있는 상태라 눈에 띄어야 한다. */
+.me-name.needs-name {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+}
