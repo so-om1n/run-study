@@ -169,21 +169,18 @@ fn open_game_window(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // ⚠ 여기에 "index.html#game" 을 넣으면 안 된다.
+    // 게임 창은 전용 페이지(game.html)를 연다.
     //
-    // WebviewUrl::App 은 경로(PathBuf)를 받는다. '#' 는 URL 조각이 아니라
-    // 파일 이름의 일부로 취급돼서, 실제로는 `index.html#game` 이라는
-    // 존재하지 않는 파일을 찾게 된다. 윈도우에서 게임 창이 오류를 내며
-    // 안 뜨던 원인이 이것이다.
-    //
-    // 그래서 페이지는 index.html 그대로 열고, "이 창은 게임 창"이라는
-    // 사실은 주입 스크립트로 알린다. URL 파싱이 끼지 않아 확실하다.
-    tauri::WebviewWindowBuilder::new(&app, "game", tauri::WebviewUrl::App("index.html".into()))
+    // 예전에는 index.html 하나를 열고 주입 스크립트로 "이 창은 게임 창"을
+    // 알렸는데, 그 판단이 어긋나면 화면이 통째로 비어버리고 릴리스
+    // 빌드에서는 원인을 볼 수가 없었다. 페이지를 나누면 판단할 일이
+    // 없어진다. (그 전에는 "index.html#game" 을 넘겼는데, 이 API 는
+    //  URL 이 아니라 경로를 받아서 '#' 가 파일 이름의 일부가 됐다)
+    tauri::WebviewWindowBuilder::new(&app, "game", tauri::WebviewUrl::App("game.html".into()))
         .title("run study 미니게임")
         .inner_size(430.0, 660.0)
         .min_inner_size(380.0, 520.0)
         .resizable(true)
-        .initialization_script("window.__RUN_STUDY_GAME__ = true;")
         .build()
         .map_err(|e| e.to_string())?;
 

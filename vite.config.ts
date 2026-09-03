@@ -16,5 +16,14 @@ export default defineConfig({
   },
   build: {
     target: "safari15",
+    rollupOptions: {
+      // 창마다 페이지를 따로 만든다. 한 페이지를 플래그로 갈랐더니
+      // 그 플래그가 안 잡히는 경우를 릴리스 빌드에서 확인할 방법이
+      // 없었다. 파일이 나뉘면 판단할 일 자체가 사라진다.
+      input: {
+        main: "index.html",
+        game: "game.html",
+      },
+    },
   },
 });
