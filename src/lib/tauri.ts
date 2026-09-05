@@ -146,3 +146,28 @@ export async function setAutoLaunch(enabled: boolean) {
     console.warn("[run study] 자동 실행 설정 실패", e);
   }
 }
+
+/**
+ * 창 크기 조절을 시작한다.
+ *
+ * 테두리 없는 창은 OS 가 주는 모서리 손잡이가 없거나 잡기 어렵다.
+ * 그래서 우하단에 손잡이를 직접 두고, 거기서 끌면 네이티브 리사이즈를
+ * 시작하도록 알려준다.
+ */
+export async function startResize() {
+  const w = window as unknown as {
+    __TAURI__?: {
+      window?: {
+        getCurrentWindow?: () => {
+          startResizeDragging: (dir: string) => Promise<void>;
+        };
+      };
+    };
+  };
+  try {
+    const win = w.__TAURI__?.window?.getCurrentWindow?.();
+    await win?.startResizeDragging("SouthEast");
+  } catch (e) {
+    console.warn("[run study] 크기 조절을 시작하지 못했어요", e);
+  }
+}

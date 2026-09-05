@@ -64,3 +64,16 @@ export const EXPIRY_OPTIONS: { label: string; hours: number | null }[] = [
   { label: "하루", hours: 24 },
   { label: "지우지 않음", hours: null },
 ];
+
+/**
+ * 만료된 상태 메시지인가.
+ *
+ * 만료 시각을 저장만 하고 아무도 보지 않으면, 지정한 시간이 지나도
+ * 메시지가 그대로 남고 거기 달린 반응도 같이 남는다.
+ */
+export function isExpired(
+  message: { expiresAt: number | null } | null,
+  now = Date.now(),
+): boolean {
+  return message?.expiresAt != null && message.expiresAt <= now;
+}

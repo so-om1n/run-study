@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "run study",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "com.runstudy.app",
   "build": {
     "frontendDist": "../dist",
@@ -17,14 +17,18 @@
         "title": "run study",
         "width": 382,
         "height": 460,
-        "resizable": false,
+        "resizable": true,
         "decorations": false,
         "transparent": true,
         "shadow": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false,
-        "center": true
+        "center": true,
+        "minWidth": 300,
+        "minHeight": 320,
+        "maxWidth": 720,
+        "maxHeight": 900
       }
     ],
     "security": {

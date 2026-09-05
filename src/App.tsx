@@ -10,12 +10,13 @@ import type {
 } from "./types";
 import type { MePatch, PartyBrief, PresenceClient } from "./lib/presence";
 import { createPresence } from "./lib/presence";
-import { formatDuration, resolveStatus } from "./lib/status";
+import { formatDuration, isExpired, resolveStatus } from "./lib/status";
 import {
   onTrayMenu,
   setAutoHide,
   hidePopover,
   openGameWindow,
+  startResize,
   setAutoLaunch,
   setFocusMode,
   updateTrayCount,
@@ -157,6 +158,27 @@ export default function App() {
       settings.shareFocusTime ? timerStartedAt : null,
     );
   }, [client, myStatus, timerStartedAt, settings.shareFocusTime]);
+
+  /* ---------- 상태 메시지 만료 ----------
+   * 만료 시각을 저장만 하고 아무도 보지 않으면 지정한 시간이 지나도
+   * 메시지가 그대로 남는다. 20초마다 다시 판단한다. */
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 20_000);
+    return () => clearInterval(t);
+  }, []);
+
+  /* 내 메시지가 만료됐으면 서버에서도 지운다. 화면에서 가리는 것만으로는
+   * 남의 기기에 그대로 남고, 거기 달린 반응도 안 없어진다.
+   * 지우면 status_id 가 새로 발급되고 트리거가 옛 반응을 정리한다. */
+  const clearing = useRef(false);
+  useEffect(() => {
+    const mine = party?.members.find((m) => m.id === client?.meId);
+    if (!mine || !isExpired(mine.message, now) || clearing.current) return;
+    clearing.current = true;
+    void Promise.resolve(client?.updateMe({ message: null })).finally(() => {
+      clearing.current = false;
+    });
+  }, [party, client, now]);
 
   /* ---------- 1초 틱 (누군가 집중 중일 때만) ---------- */
   const anyFocus =
@@ -358,15 +380,33 @@ export default function App() {
     );
   }
 
-  const me = party.members.find((m) => m.id === c.meId);
-  const onlineCount = party.members.filter((m) => m.status !== "offline").length;
+  /* 만료된 상태 메시지는 없는 것으로 친다.
+   * 메시지가 사라지면 거기 달렸던 반응도 같이 사라져야 한다 —
+   * 반응은 메시지에 붙는 것이라 붙을 데가 없어지기 때문이다. */
+  const expiredIds = new Set(
+    party.members.filter((m) => isExpired(m.message, now)).map((m) => m.id),
+  );
+  const view: Party =
+    expiredIds.size === 0
+      ? party
+      : {
+          ...party,
+          members: party.members.map((m) =>
+            expiredIds.has(m.id) ? { ...m, message: null } : m,
+          ),
+        };
+
+  const me = view.members.find((m) => m.id === c.meId);
+  const onlineCount = view.members.filter((m) => m.status !== "offline").length;
   const canLink = c.isLive() && c.isAnonymous();
 
   const nameOf = (id: string) =>
-    party.members.find((m) => m.id === id)?.name ?? "알 수 없음";
+    view.members.find((m) => m.id === id)?.name ?? "알 수 없음";
 
   /** 셀·상세카드에 그릴 반응 묶음 (같은 이모지끼리 합침) */
   function stickersFor(memberId: string): StickerGroup[] {
+    // 메시지가 만료됐으면 거기 달렸던 반응도 보여주지 않는다
+    if (expiredIds.has(memberId)) return [];
     const list = reactions[memberId] ?? [];
     const order: string[] = [];
     const map = new Map<string, Reaction[]>();
@@ -416,7 +456,7 @@ export default function App() {
 
   const detailMember =
     modal.kind === "detail"
-      ? party.members.find((m) => m.id === modal.memberId)
+      ? view.members.find((m) => m.id === modal.memberId)
       : undefined;
 
   return (
@@ -481,7 +521,7 @@ export default function App() {
       </div>
 
       <div className="grid">
-        {party.members.map((m) => (
+        {view.members.map((m) => (
           <MemberCell
             key={m.id}
             member={m.id === c.meId ? { ...m, status: myStatus } : m}
@@ -538,6 +578,17 @@ export default function App() {
           <span className="foot-count">{onlineCount}명</span>
         </div>
       </div>
+
+      {/* 크기 조절 손잡이. 테두리 없는 창이라 OS 가 주는 모서리가
+          잡히지 않는 경우가 있어서 직접 둔다. */}
+      <div
+        className="resize-grip"
+        title="끌어서 크기 조절"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          void startResize();
+        }}
+      />
 
       {palette && (
         <ReactionPalette

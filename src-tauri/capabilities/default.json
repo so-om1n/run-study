@@ -16,6 +16,9 @@
     "autostart:default",
     "updater:default",
     "core:window:allow-unminimize",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-set-size",
+    "core:window:allow-inner-size"
   ]
 }
